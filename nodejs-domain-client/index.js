@@ -43,7 +43,7 @@ exports.StartClient = function (domain, profile, secret, context) {
       }
       future.return(client);
     }, err => {
-      alert(`Couldn't open chart. Server said: ${err}`);
+      console.log(`Couldn't open chart. Server said: ${err}`);
       future.throw(err);
     });
   return future;
@@ -67,33 +67,31 @@ function loadDataStructure (path, depth) {
     const struct = {};
     const folders = {};
     x.filter(y => y.Name).forEach(ent => {
+      var value;
       switch (ent.Type) {
         case 'String':
-          if (ent.Name.includes('/')) {
-            // subdir
-            const names = ent.Name.split('/');
-            const parent = folders[names.slice(0, -1).join('/')];
-            parent[cleanName(names.slice(-1)[0])] = ent.StringValue;
-          } else {
-            // in root
-            struct[cleanName(ent.Name)] = ent.StringValue;
-          }
+          value = ent.StringValue;
           break;
         case 'Folder':
-          const folder = {};
-          folders[ent.Name] = folder;
-          if (ent.Name.includes('/')) {
-            // subdir
-            const names = ent.Name.split('/');
-            const parent = folders[names.slice(0, -1).join('/')];
-            parent[cleanName(names.slice(-1)[0])] = folder;
-          } else {
-            // in root
-            struct[cleanName(ent.Name)] = folder;
-          }
+          value = {};
+          folders[ent.Name] = value;
+          break;
+        case 'File':
+          const load = () => this.callApi('loadFile', path+'/'+ent.Name);
+          value = {load};
           break;
         default:
           console.log('dunno', ent);
+      }
+
+      if (ent.Name.includes('/')) {
+        // subdir
+        const names = ent.Name.split('/');
+        const parent = folders[names.slice(0, -1).join('/')];
+        parent[cleanName(names.slice(-1)[0])] = value;
+      } else {
+        // in root
+        struct[cleanName(ent.Name)] = value;
       }
     });
     return struct;
