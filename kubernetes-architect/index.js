@@ -146,6 +146,9 @@ Future.task(() => {
             labels: { app, origin },
             name,
             namespace,
+            annotations: {
+              'kubernetes.io/tls-acme': 'true',
+            },
           },
           spec: {
             rules: [{
@@ -154,7 +157,7 @@ Future.task(() => {
                 paths: [{
                   backend: {
                     serviceName: name,
-                    servicePort: 'http',
+                    servicePort: 80,
                   },
                   path: '/',
                 }],
