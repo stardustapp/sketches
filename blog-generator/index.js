@@ -38,7 +38,7 @@ Future.task(() => {
       path: `/${slug}.html`,
       body: `<!DOCTYPE html>
         <title>${page.title} - ${siteTitle}</title>
-        <h2><a href="/">${siteTitle}</a></h2>
+        <h2><a href=".">${siteTitle}</a></h2>
         <h1>${page.title}</h1>
         <div id="page-body">${innerHtml}</div>`});
   });
