@@ -53,6 +53,8 @@ Future.task(() => {
     if (publishedAt.isValid()) {
       p.publishDate = publishedAt.format('LL [at] LT');
       p.path = `posts/${publishedAt.format('YYYY')}/${p.path}`;
+    } else {
+      p.path = `posts/drafts/${p.path}`;
     }
   });
 
