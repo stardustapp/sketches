@@ -50,7 +50,7 @@ Future.task(() => {
 
   posts.forEach(p => {
     const publishedAt = moment(p.raw.publishedAt);
-    if (publishedAt.isValid()) {
+    if (p.raw.publishedAt && publishedAt.isValid()) {
       p.publishDate = publishedAt.format('LL [at] LT');
       p.path = `posts/${publishedAt.format('YYYY')}/${p.path}`;
     } else {
