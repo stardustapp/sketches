@@ -43,6 +43,10 @@ Future.task(() => {
         innerHtml: renderInnerHtml(data),
         raw: data,
       };
+    }).sort((a, b) => {
+      if (!a.publishedAt) return 1;
+      if (!b.publishedAt) return -1;
+      return a.publishedAt.localeCompare(b.publishedAt);
     });
   }
   const pages = loadContentNodes('/persist/blog/pages');
