@@ -16,6 +16,7 @@ Future.task(() => {
   const config = profile.loadDataStructure('/config/blog', 3).wait();
   const siteTitle = config.siteTitle || 'New Blog';
   const siteSubtitle = config.siteSubtitle || 'Content goes here';
+  const sections = config.sections || {};
 
   // load all the layout HTML files into a Map
   const layouts = new Map;
@@ -40,6 +41,7 @@ Future.task(() => {
       return {
         path: `${slug}.html`,
         title: data.title || slug,
+        section: sections[data.section],
         innerHtml: renderInnerHtml(data),
         raw: data,
       };
