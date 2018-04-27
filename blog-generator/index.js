@@ -54,6 +54,13 @@ Future.task(() => {
   const pages = loadContentNodes('/persist/blog/pages');
   const posts = loadContentNodes('/persist/blog/posts');
 
+  // TODO: don't require photos/ to exist
+  const photosPath = '/persist/blog/photos';
+  const photos = profile.listChildNames(photosPath).wait().map(slug => {
+    const struct = profile.loadDataStructure(photosPath+'/'+slug, 2).wait();
+    return struct;
+  });
+
   posts.forEach(p => {
     const publishedAt = moment(p.raw.publishedAt);
     if (p.raw.publishedAt && publishedAt.isValid()) {
@@ -77,7 +84,7 @@ Future.task(() => {
 
     return Mustache.render(layouts.get('default'), {
       siteTitle, siteSubtitle,
-      pages, posts,
+      pages, posts, photos,
       innerHtml, baseHref,
     });
   }
@@ -106,7 +113,7 @@ Future.task(() => {
   htmlFiles.push({
     path: '/index.html',
     body: renderPage({
-      posts, pages,
+      posts, pages, photos,
     }, 'home'),
   });
 
