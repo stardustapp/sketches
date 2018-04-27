@@ -37,6 +37,9 @@ Future.task(() => {
     profile.callApi('putString', photoPath+'/caption', caption).wait();
     profile.callApi('putString', photoPath+'/taken at', new Date(taken_at_timestamp*1000).toISOString()).wait();
     profile.callApi('putString', photoPath+'/full res url', display_url).wait();
+    profile.callApi('store', photoPath+'/dimensions', Skylink.toEntry('dimensions', {
+      width: ''+dimensions.width,
+      height: ''+dimensions.height})).wait();
     profile.callApi('putString', photoPath+'/preview url', previewUrl).wait();
   });
 
