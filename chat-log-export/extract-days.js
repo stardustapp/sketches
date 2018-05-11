@@ -10,13 +10,17 @@ const writeFile = Future.wrap(require('fs').writeFile);
 const argv = require('minimist')(process.argv.slice(2), {
   string: ['date'],
 });
-const {network, channel, query, background, date, output} = argv;
-if (!network || !date) {
-  console.warn('--network= and --date=YYYY-MM-DD are required');
+const {network, channel, query, background, date, all, output} = argv;
+if (!network ) {
+  console.warn('--network= is required');
   process.exit(2);
 }
 if (!channel && !query && !background) {
   console.warn('One of --channel= or --query= or --background=yes is required')
+  process.exit(2);
+}
+if (!date && !all) {
+  console.warn('One of --date=YYYY-MM-DD or --all=yes is required');
   process.exit(2);
 }
 
@@ -26,7 +30,7 @@ if (channel) {
   inputPath += `/channels/${channel}/log`;
 } else if (query) {
   inputPath += `/queries/${query}/log`;
-} else {
+} else if (background) {
   inputPath += `/server-log`;
 }
 
@@ -42,9 +46,20 @@ Future.task(() => {
   console.log('Connecting to profile servers...');
   profile = StartEnvClient('irc').wait();
 
-  const startDate = moment.utc(date, 'YYYY-MM-DD');
-  const dateGrain = ['year', 'month', 'day'][date.split('-').length-1];
-  const endDate = startDate.clone().add(1, dateGrain).subtract(1, 'day');
+  let startDate, endDate;
+  if (date) {
+    startDate = moment.utc(date, 'YYYY-MM-DD');
+    const dateGrain = ['year', 'month', 'day'][date.split('-').length-1];
+    endDate = startDate.clone().add(1, dateGrain).subtract(1, 'day');
+  } else if (all) {
+    console.log(inputPath+'/horizon');
+    startDate = moment.utc(profile.callApi('loadString', inputPath+'/horizon').wait(), 'YYYY-MM-DD');
+    endDate = moment.utc(profile.callApi('loadString', inputPath+'/latest').wait(), 'YYYY-MM-DD');
+    if (!startDate.isValid() || !endDate.isValid()) {
+      console.warn(`I didn't see log-partitioning markers. Can't process --all`);
+      process.exit(3);
+    }
+  }
 
   let day = startDate.clone();
   while (day <= endDate) {
