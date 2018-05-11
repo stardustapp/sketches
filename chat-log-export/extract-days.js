@@ -95,6 +95,13 @@ Future.task(() => {
         case 'PRIVMSG':
           line = `<${entry.prefixName}> ${entry.params[1]}`;
           break;
+        case 'NOTICE':
+          line = `[${entry.prefixName}] ${entry.params[1]}`;
+          break;
+
+        case 'MODE':
+          line = `* ${entry.prefixName} set ${entry.params.slice(1).join(' ')}`;
+          break;
 
         case 'JOIN':
         case 'PART':
@@ -105,11 +112,17 @@ Future.task(() => {
           const suffix = entry.params[msgIdx] ? `: ${entry.params[msgIdx]}` : '';
           line = `${symbol} ${entry.prefixName} ${verb} (${entry.prefixUser}@${entry.prefixHost})${suffix}`;
           break;
+        case 'KICK':
+          line = `* ${entry.params[1]} was kicked by ${entry.prefixName} (${entry.params[2]})`;
+          break;
 
         case 'NICK':
           line = `* ${entry.prefixName} → ${entry.params[0]}`;
           break;
 
+        case 'TOPIC':
+          line = `* ${entry.prefixName} set the topic to: ${entry.params[1]}`;
+          break;
         case '332':
           line = `* Topic is: ${entry.params[2]}`;
           break;
@@ -119,9 +132,10 @@ Future.task(() => {
           line = `* Set by ${entry.params[2]} at ${topicTime}`;
           break;
 
-        case '353':
-        case '366':
-          break; // NAMES
+        case '353': // NAMES
+        case '366': // end NAMES
+        case '315': // end WHO
+          break;
 
         case 'CTCP':
           if (entry.params[1].startsWith('ACTION ')) {
