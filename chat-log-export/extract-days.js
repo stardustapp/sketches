@@ -80,11 +80,17 @@ Future.task(() => {
 
     const lines = [];
     for (let i = parseInt(horizon); i <= parseInt(latest); i++) {
-      const entry = profile.loadDataStructure(dayPath+'/'+i.toString(), 2).wait();
+      let entry;
+      try {
+        entry = profile.loadDataStructure(dayPath+'/'+i.toString(), 2).wait();
+      } catch (err) {
+        console.log(dayStr, i, err);
+        continue;
+      }
       entry.params = Object.keys(entry.params).map(key => entry.params[key]);
       entry.timestamp = moment.utc(entry.timestamp).format('YYYY-MM-DD HH:mm:ss');
 
-      if (entry.command === 'PRIVMSG' && entry.params[1].startsWith('\x01ACTION ')) {
+      if (entry.command === 'PRIVMSG' && entry.params[1] && entry.params[1].startsWith('\x01ACTION ')) {
         entry.command = 'CTCP';
         entry.params[1] = entry.params[1].slice(1, -1);
       }
