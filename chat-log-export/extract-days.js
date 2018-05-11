@@ -108,6 +108,9 @@ Future.task(() => {
         case 'MODE':
           line = `* ${entry.prefixName} set ${entry.params.slice(1).join(' ')}`;
           break;
+        case 'INVITE':
+          line = `* ${entry.prefixName} invited ${entry.params[0]} to ${entry.params[1]}`;
+          break;
 
         case 'JOIN':
         case 'PART':
@@ -132,6 +135,9 @@ Future.task(() => {
         case '332':
           line = `* Topic is: ${entry.params[2]}`;
           break;
+        case '328':
+          line = `* Channel website: ${entry.params[2]}`;
+          break;
         case '333':
           const topicTime = moment(parseInt(entry.params[3])*1000)
               .format('YYYY-MM-DD HH:mm:ss');
@@ -153,6 +159,11 @@ Future.task(() => {
           }
           // fall through to default
         default:
+          if (entry.command.match(/^\d\d\d$/)) {
+            line = ['*', entry.command, ...entry.params.slice(2)].join(' ');
+            break;
+          }
+
           console.log(dayStr, i, entry);
           line = [entry.command, ...entry.params].join(' ');
       }
