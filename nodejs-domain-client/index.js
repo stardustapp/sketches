@@ -60,7 +60,7 @@ function loadDataStructure (path, depth) {
   }).promise();
 
   function cleanName(name) {
-    return name.replace(/ [a-z]/g, (x => x[1].toUpperCase()));
+    return name.replace(/[ -][a-z]/g, (x => x[1].toUpperCase()));
   }
 
   return Future.fromPromise(api.then(x => {
