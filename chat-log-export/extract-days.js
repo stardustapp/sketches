@@ -84,7 +84,8 @@ Future.task(() => {
       try {
         entry = profile.loadDataStructure(dayPath+'/'+i.toString(), 2).wait();
       } catch (err) {
-        console.log(dayStr, i, err);
+        console.log(i, err);
+        process.stdout.write('          '+'\t');
         continue;
       }
       entry.params = Object.keys(entry.params).map(key => entry.params[key]);
@@ -164,7 +165,8 @@ Future.task(() => {
             break;
           }
 
-          console.log(dayStr, i, entry);
+          console.log(i, entry);
+          process.stdout.write('          '+'\t');
           line = [entry.command, ...entry.params].join(' ');
       }
 
