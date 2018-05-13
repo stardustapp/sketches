@@ -114,9 +114,9 @@ Future.task(() => {
       },
     }));
 
-    Object.keys(container.services).map(name => {
+    client.listChildNames('/persist/software/containers/'+app+'/services').wait().forEach(name => {
       // type, webPort, subdomain
-      const service = container.services[name];
+      const service = client.loadDataStructure('/persist/software/containers/'+app+'/services/'+name, 5).wait();
       documents.push(yaml.dump({
         apiVersion: 'v1',
         kind: 'Service',
@@ -171,6 +171,85 @@ Future.task(() => {
         }));
       }
     });
+
+  });
+
+
+  client.listChildNames('/persist/software/endpoints').wait().forEach(folder => {
+    // ipAddress, webPort, domains.#
+    const endpoint = client.loadDataStructure('/persist/software/endpoints/'+folder, 5).wait();
+    const origin = 'stardust-architect';
+    const name = 'ext-'+folder;
+
+    documents.push(yaml.dump({
+      kind: 'Service',
+      apiVersion: 'v1',
+      metadata: {
+        labels: { origin },
+        name, namespace,
+      },
+      spec: {
+        type: 'ClusterIP',
+        ports: [{
+          name: 'http',
+          port: 80,
+          protocol: 'TCP',
+          targetPort: 'http',
+        }],
+        selector: { },
+      },
+    }));
+
+    documents.push(yaml.dump({
+      kind: 'Endpoints',
+      apiVersion: 'v1',
+      metadata: {
+        labels: { origin },
+        name, namespace,
+      },
+      subsets: [{
+        addresses: [{
+          ip: endpoint.ipAddress,
+        }],
+        ports: [{
+          port: +endpoint.webPort,
+          name: 'http',
+        }],
+      }],
+    }));
+
+    const domainList = Object
+        .keys(endpoint.domains)
+        .map(x => endpoint.domains[x]);
+    documents.push(yaml.dump({
+      apiVersion: 'extensions/v1beta1',
+      kind: 'Ingress',
+      metadata: {
+        labels: { origin },
+        name, namespace,
+        annotations: {
+          'kubernetes.io/tls-acme': 'true',
+        },
+      },
+      spec: {
+        rules: domainList.map(domain => ({
+          host: domain,
+          http: {
+            paths: [{
+              backend: {
+                serviceName: name,
+                servicePort: 80,
+              },
+              path: '/',
+            }],
+          },
+        })),
+        tls: [{
+          hosts: domainList,
+          secretName: name + '-ssl',
+        }],
+      },
+    }));
 
   });
 
