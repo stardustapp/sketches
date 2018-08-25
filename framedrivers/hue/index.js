@@ -3,6 +3,7 @@ const hue = require('node-hue-api');
 
 const fd = new FrameDriver({
   name: 'Phillips Hue API',
+  heritage: '8062ef1f-fd1e-4fe4-8048-57a823c3c67f',
   description: 'Wraps the Hue Lighting APIs to enable controlling a Hue bridge on the local network.',
   tags: [
     'hue bridge',
@@ -13,25 +14,29 @@ const fd = new FrameDriver({
     'connected lighting',
   ],
   upstreamLibrary: 'https://github.com/peter-murray/node-hue-api',
-})
-fd.launch(function() {
+});
+fd.define(function() {
 
   const lightState = this.dataFrame('light state', {
-    data: {
+    fields: {
       on: Boolean,
-      bri: Number,
+      brightness: Number,
       hue: Number,
-      sat: Number,
+      saturation: Number,
       effect: String,
       xy: tupleOf(Number, Number),
       alert: String,
       colormode: String,
       reachable: Boolean,
     },
+    ingestKey: {
+      brightness: 'bri',
+      saturation: 'sat',
+    }
   });
 
   const lightInfo = this.dataFrame('light info', {
-    data: {
+    fields: {
       id: String,
       name: String,
       type: String,
@@ -43,53 +48,47 @@ fd.launch(function() {
     },
   });
 
-  const bridgeConfig = this.dataFrame('bridge', {
-    props: {
-      ipaddress: String,
-      username: String,
-    },
-    data: {
-      timeout: 20000,
-      port: 80,
-    },
-  });
-  const bridgeApi = this.apiFrame('bridge api', function() {
+  const bridgeApi = this.apiFrame('hue', function() {
     this.setupFunc({
-      input: bridgeConfig,
+      input: {
+        ipaddress: String,
+        username: String,
+      },
       impl(input) {
         this.hue = new hue.HueApi(
           input.ipaddress, input.username,
-          input.timeout, input.port);
+          //input.timeout, input.port,
+          );
       }
     });
 
-    this.getter('configuration', {
-      type: Object,
+    this.function('get configuration', {
+      output: Object,
       impl() { return this.hue.config(); }
     });
 
-    this.getter('advertisement', {
-      type: Object,
+    this.function('get advertisement', {
+      output: Object,
       impl() { return this.hue.description(); }
     });
 
-    this.getter('all lights', {
-      type: listOf(lightInfo),
+    this.function(['lights', 'list'], {
+      output: listOf(lightInfo),
       impl() { return this.hue.lights(); }
     });
   });
 
-  const setupApi = this.apiFrame('setup api', function() {
+  const setupApi = this.apiFrame('setup', function() {
     this.function('register', {
       input: {
         ipaddress: String,
         devicetype: 'stardust framedriver',
       },
-      output: bridgeConfig,
+      output: bridgeApi,
       async impl({ipaddress, devicetype}) {
         const api = new hue.HueApi();
         const username = await api.registerUser(ipaddress, devicetype);
-        console.log('!!! registered user as', username, 'at', ipaddress);
+        console.log('--> registered hue user', username, 'at', ipaddress);
         return bridgeApi.createHandle({
           ipaddress: ipaddress,
           username: username,
@@ -123,5 +122,4 @@ fd.launch(function() {
     });
   });
 
-  this.export(() => setupApi.createHandle());
-});
+}).launch();

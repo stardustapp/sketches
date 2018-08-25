@@ -1,17 +1,22 @@
-// Blank line aesthetic
-process.on('exit', () => console.log());
+const {upsertFileContents} = require('./lib/utils');
+const apiTypes = require('./lib/api-types');
 
 // TODO: establish local identity (UUID)
-const fs = require('fs');
+const IdentityFile = process.env.SD_IDENTIFY_FILE || 'driver-identity.txt';
+function getPersonalUuid() {
+  return upsertFileContents(IdentityFile, () => {
+    console.log('--> generating new identity file');
+    return require('uuid/v4')();
+  });
+}
 
 skylinkUri = process.env.SKYLINK_URI;
 if (!skylinkUri) {
   console.log('!-> no stardust server found!');
   console.log('    please try again with SKYLINK_URI in the environment');
-  console.log();
   process.exit(4);
 }
-console.log('--> using skylink server:', skylinkUri);
+console.log('    using skylink server:', skylinkUri);
 
 const http = require('http');
 const httpAgent = new http.Agent({
@@ -22,23 +27,31 @@ const fetch = require('node-fetch');
 async function volley(request) {
   const resp = await fetch(skylinkUri, {
     method: 'POST',
+    body: JSON.stringify(request),
     agent: httpAgent,
   });
   if (resp.status === 200) {
     return resp.json();
   } else { // TODO: check if there's json to parse
-    console.log(await resp.text());
+    console.log(await resp.text().catch(ex => ex.message));
     throw new Error(`Skylink endpoint responded with HTTP status ${resp.status}`);
   }
 }
 
-const timeout = ms => new Promise(res => setTimeout(res, ms))
+const timeout = function(ms) {
+  return new Promise(res => setTimeout(res, ms));
+}
 
 exports.tupleOf = function(...items) {
-  console.log('    tuple of', items);
+  const tuple = new apiTypes.Tuple(null);
+  tuple.items = items;
+  return tuple;
 }
-exports.listOf = function(items) {
-  console.log('    list of', items);
+exports.listOf = function(item) {
+  // TODO
+  const list = new apiTypes.Type('Folder');
+  list.item = item;
+  return list;
 }
 
 class ApiFrameBuilder {
@@ -71,37 +84,58 @@ class FrameFactory {
     setup.call(builder);
     this.frames.set(name, builder.build());
   }
-  export(getter) {
-    console.log('export', getter);
+  build() {
+    return this;
   }
+}
+
+function printError(prefix, {message, stack}) {
+  console.log(prefix, message);
+  console.log(stack.slice(stack.indexOf('\n')+1));
 }
 
 exports.FrameDriver = class FrameDriver {
   constructor(meta) {
     this.metadata = meta; // name, description, tags, upstreamLibrary
-    this.factory = new FrameFactory;
-  }
-  async launch(cb) {
-    function printError(prefix, {message, stack}) {
-      console.log(prefix, message);
-      console.log(stack.slice(stack.indexOf('\n')+1));
-    }
 
+    this.factory = new FrameFactory;
+    this.skylinkUri = skylinkUri;
+    this.identityToken = getPersonalUuid();
+    console.log('    using identity key', this.identityToken);
+  }
+
+  define(cb) {
     try {
-      await cb.call(this.factory);
+      cb.call(this.factory);
+      console.log('--> ran framedriver setup callback');
+
+      this.compile();
+      console.log('==> successfully compiled framedriver structure');
+      return this;
+
     } catch (err) {
       printError('!-> COMPILE FAULT:', err);
       process.exit(1);
     }
+  }
 
+  compile() {
+    console.log(this);
+  }
+
+  async launch() {
     try {
+      console.log('--> starting server communications...');
       const pong = await volley({Op: 'ping'});
       if (!pong.Ok) throw new Error(`ping wasn't okay.`);
-      console.log('    server is reachable');
+      console.log('    profile server is reachable');
+
+      // TODO: register our 'driver' identity against the public API
+      console.log('--> launched driver session');
 
       while (true) {
-        console.log('--> looping...');
-        await timeout(5000);
+        console.log('    looping...');
+        await timeout(60000);
       }
     } catch (err) {
       printError('!-> RUNTIME FAULT:', err);
