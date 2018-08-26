@@ -1,4 +1,5 @@
 const {upsertFileContents} = require('./lib/utils');
+const {SkylinkClient} = require('./lib/skylink');
 const apiTypes = require('./lib/api-types');
 
 // TODO: establish local identity (UUID)
@@ -17,26 +18,7 @@ if (!skylinkUri) {
   process.exit(4);
 }
 console.log('    using skylink server:', skylinkUri);
-
-const http = require('http');
-const httpAgent = new http.Agent({
-	keepAlive: true,
-});
-
-const fetch = require('node-fetch');
-async function volley(request) {
-  const resp = await fetch(skylinkUri, {
-    method: 'POST',
-    body: JSON.stringify(request),
-    agent: httpAgent,
-  });
-  if (resp.status === 200) {
-    return resp.json();
-  } else { // TODO: check if there's json to parse
-    console.log(await resp.text().catch(ex => ex.message));
-    throw new Error(`Skylink endpoint responded with HTTP status ${resp.status}`);
-  }
-}
+const skylink = new SkylinkClient(skylinkUri);
 
 const timeout = function(ms) {
   return new Promise(res => setTimeout(res, ms));
@@ -126,7 +108,7 @@ exports.FrameDriver = class FrameDriver {
   async launch() {
     try {
       console.log('--> starting server communications...');
-      const pong = await volley({Op: 'ping'});
+      const pong = await skylink.volley({Op: 'ping'});
       if (!pong.Ok) throw new Error(`ping wasn't okay.`);
       console.log('    profile server is reachable');
 
