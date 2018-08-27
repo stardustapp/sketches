@@ -57,7 +57,7 @@ fd.define(function() {
       input: {
         pageFunction: String,
       },
-      output: Object,
+      output: JSON,
       impl(input) {
         return this.evaluate(input.pageFunction);
       }

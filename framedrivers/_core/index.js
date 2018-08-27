@@ -2,7 +2,7 @@ const {upsertFileContents} = require('./lib/utils');
 const {SkylinkClient} = require('./lib/skylink');
 
 const apiTypes = require('./lib/api-types');
-const {FolderLiteral, StringLiteral} = require('./lib/api-literals');
+const apiLiterals = require('./lib/api-literals');
 exports.ApiTypes = apiTypes;
 
 // TODO: establish local identity (UUID)
@@ -78,14 +78,15 @@ exports.FrameDriver = class FrameDriver {
       if (!pong.Ok) throw new Error(`ping wasn't okay.`);
       console.log('    profile server is reachable');
 
+      const helloEntry = new apiLiterals.Folder('', [
+        new apiLiterals.String('identity token', this.identityToken),
+        new apiLiterals.String('framework', JSON.stringify(this.framework)),
+      ]);
+      console.log('sending', helloEntry);
       const introduction = await skylink.volley({
         Op: 'invoke',
-        Path: '/domain/introduce-driver',
-        Input: new FolderLiteral('', [
-          new StringLiteral('identity token', this.identityToken),
-          new StringLiteral('metadata', this.metadata),
-          new StringLiteral('framework', this.framework.describe()),
-        ]),
+        Path: '/domain/introduce-driver/invoke',
+        Input: helloEntry,
       });
       console.log('--> launched driver session', introduction);
 

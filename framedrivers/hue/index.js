@@ -19,48 +19,41 @@ fd.define(function() {
 
   const lightState = this.dataFrame('light state', {
     fields: {
-      on: Boolean,
-      brightness: Number,
-      hue: Number,
-      saturation: Number,
-      effect: String,
-      xy: tupleOf(Number, Number),
-      alert: String,
-      colormode: String,
-      reachable: Boolean,
+      'On': Boolean,
+      'Brightness': Number,
+      'Hue': Number,
+      'Saturation': Number,
+      'Effect': String,
+      'XY': tupleOf(Number, Number),
+      'Alert': String,
+      'Color Mode': String,
+      'Reachable': Boolean,
     },
-    ingestKey: {
-      brightness: 'bri',
-      saturation: 'sat',
-    }
+    legacyKeyMapper(words) {
+      switch (words) {
+        case 'Brightness': return 'bri';
+        case 'Saturation': return 'sat';
+        default: return words
+          .map(w => w.toLowerCase())
+          .join('');
+      }
+    },
   });
 
   const lightInfo = this.dataFrame('light info', {
     fields: {
-      id: String,
-      name: String,
-      type: String,
-      modelid: String,
-      manufacturername: String,
-      uniqueid: String,
-      swversion: String,
-      state: lightState,
+      'id': String,
+      'name': String,
+      'type': String,
+      'modelid': String,
+      'manufacturername': String,
+      'uniqueid': String,
+      'swversion': String,
+      'state': lightState,
     },
   });
 
-  const bridgeApi = this.apiFrame('hue', function() {
-    this.setupFunc({
-      input: {
-        ipaddress: String,
-        username: String,
-      },
-      impl(input) {
-        this.hue = new hue.HueApi(
-          input.ipaddress, input.username,
-          //input.timeout, input.port,
-          );
-      }
-    });
+  const bridgeApi = this.interfaceFrame('hue', function() {
 
     this.function('get configuration', {
       output: Object,
@@ -78,7 +71,30 @@ fd.define(function() {
     });
   });
 
-  const setupApi = this.apiFrame('setup', function() {
+  const bridgeUser = this.dataFrame('bridge user', {
+    fields: {
+      'ipaddress': String,
+      'port': 80,
+      'username': String,
+    },
+    methods: {
+      'connect': {
+        input: {
+          timeout: 20 * 1000,
+        },
+        output: bridgeApi,
+        impl(input) {
+          const hue = new hue.HueApi(
+            this.ipaddress, this.username,
+            this.timeout, input.port,
+            );
+          return bridgeApi.createHandle(hue);
+        }
+      },
+    },
+  });
+
+  const setupApi = this.interfaceFrame('setup', function() {
     this.function('register', {
       input: {
         ipaddress: String,

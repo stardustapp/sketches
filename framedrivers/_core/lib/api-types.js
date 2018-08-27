@@ -191,7 +191,7 @@ PlatformApiType.from = function TypeFromRaw(source, name) {
     return new PlatformApiTypeEmpty(name);
 
   // recognize a constructor vs. a literal default-value
-  const sourceIsBareFunc = source.constructor === Function;
+  const sourceIsBareFunc = source.constructor === Function || source === JSON;
   const typeFunc = sourceIsBareFunc ? source : source.constructor;
   const givenValue = sourceIsBareFunc ? null : source;
 
@@ -209,6 +209,10 @@ PlatformApiType.from = function TypeFromRaw(source, name) {
       return new PlatformApiTypeString(name, givenValue,
           b => b ? 'yes' : 'no',
           s => ({yes: true, no: false})[s]);
+    case JSON:
+      return new PlatformApiTypeString(name, givenValue,
+          b => JSON.stringify(b),
+          s => JSON.parse(s));
 
     // nested data structures
     case Object: // TODO: better way to detect structures
