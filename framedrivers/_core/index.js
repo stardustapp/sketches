@@ -1,6 +1,9 @@
 const {upsertFileContents} = require('./lib/utils');
 const {SkylinkClient} = require('./lib/skylink');
+
 const apiTypes = require('./lib/api-types');
+const {FolderLiteral, StringLiteral} = require('./lib/api-literals');
+exports.ApiTypes = apiTypes;
 
 // TODO: establish local identity (UUID)
 const IdentityFile = process.env.SD_IDENTIFY_FILE || 'driver-identity.txt';
@@ -36,40 +39,7 @@ exports.listOf = function(item) {
   return list;
 }
 
-class ApiFrameBuilder {
-  constructor() {
-    this.items = new Map;
-  }
-  setupFunc(opts) {
-    this.items.set('', opts);
-  }
-  getter(name, opts) {
-    this.items.set(name, opts);
-  }
-  function(name, opts) {
-    this.items.set(name, opts);
-  }
-  build() {
-    return this;
-  }
-}
-
-class FrameFactory {
-  constructor() {
-    this.frames = new Map;
-  }
-  dataFrame(name, opts) {
-    this.frames.set(name, opts);
-  }
-  apiFrame(name, setup) {
-    const builder = new ApiFrameBuilder;
-    setup.call(builder);
-    this.frames.set(name, builder.build());
-  }
-  build() {
-    return this;
-  }
-}
+const {FrameBuilder} = require('./lib/frame-factory.js');
 
 function printError(prefix, {message, stack}) {
   console.log(prefix, message);
@@ -80,7 +50,6 @@ exports.FrameDriver = class FrameDriver {
   constructor(meta) {
     this.metadata = meta; // name, description, tags, upstreamLibrary
 
-    this.factory = new FrameFactory;
     this.skylinkUri = skylinkUri;
     this.identityToken = getPersonalUuid();
     console.log('    using identity key', this.identityToken);
@@ -88,21 +57,18 @@ exports.FrameDriver = class FrameDriver {
 
   define(cb) {
     try {
-      cb.call(this.factory);
+      const builder = new FrameBuilder(this.metadata);
+      cb.call(builder);
       console.log('--> ran framedriver setup callback');
 
-      this.compile();
-      console.log('==> successfully compiled framedriver structure');
+      this.framework = builder.compile();
+      console.log('==> successfully built driver framework');
       return this;
 
     } catch (err) {
       printError('!-> COMPILE FAULT:', err);
       process.exit(1);
     }
-  }
-
-  compile() {
-    console.log(this);
   }
 
   async launch() {
@@ -112,8 +78,18 @@ exports.FrameDriver = class FrameDriver {
       if (!pong.Ok) throw new Error(`ping wasn't okay.`);
       console.log('    profile server is reachable');
 
-      // TODO: register our 'driver' identity against the public API
-      console.log('--> launched driver session');
+      const introduction = await skylink.volley({
+        Op: 'invoke',
+        Path: '/domain/introduce-driver',
+        Input: new FolderLiteral('', [
+          new StringLiteral('identity token', this.identityToken),
+          new StringLiteral('metadata', this.metadata),
+          new StringLiteral('framework', this.framework.describe()),
+        ]),
+      });
+      console.log('--> launched driver session', introduction);
+
+      // this.framework.newExport();
 
       while (true) {
         console.log('    looping...');

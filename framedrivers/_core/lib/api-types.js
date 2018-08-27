@@ -1,4 +1,5 @@
 const {ExtendableError} = require('./utils');
+const literals = require('./api-literals');
 
 class PlatformTypeError extends ExtendableError {
   constructor(fieldName, expectedType, actualType) {
@@ -9,6 +10,7 @@ class PlatformTypeError extends ExtendableError {
   }
 }
 
+// the base type
 class PlatformApiType {
   constructor(name, type) {
     this.name = name;
@@ -26,7 +28,7 @@ class PlatformApiTypeString extends PlatformApiType {
   serialize(value) {
     if (value == null)
       value = this.defaultValue;
-    return new StringLiteral(this.name, this.ser(value));
+    return new literals.String(this.name, this.ser(value));
   }
   deserialize(literal) {
     if (!literal) {
@@ -40,18 +42,18 @@ class PlatformApiTypeString extends PlatformApiType {
   }
 }
 
-class PlatformApiTypeNull extends PlatformApiType {
+class PlatformApiTypeEmpty extends PlatformApiType {
   constructor(name) {
-    super(name, 'Null');
+    super(name, 'Empty');
   }
   serialize(value) {
     if (value != null)
-      throw new Error(`Null type can't serialize anything other than null`);
+      throw new Error(`Empty type can't serialize anything other than null`);
     return null;
   }
   deserialize(literal) {
     if (literal != null)
-      throw new Error(`Null type can't deserialize anything other than null`);
+      throw new Error(`Empty type can't deserialize anything other than null`);
     return null;
   }
 }
@@ -69,13 +71,42 @@ class PlatformApiTypeJs extends PlatformApiType {
   }
 }
 
+// A binary buffer and a MIME type
+class PlatformApiTypeBlob extends PlatformApiType {
+  constructor(name) {
+    super(name, 'Blob');
+  }
+  serialize(value) {
+    if (value === null)
+      return null;
+    switch (value.constructor) {
+      case literals.Blob:
+        return value;
+      case Buffer:
+        return literal.Blob.fromNodeBuffer(this.name, value);
+      //case Blob:
+      //  return literals.Blob.fromActual(this.name, value);
+      default:
+        throw new Error(`Can't express a ${value.constructor} value as a Blob literal`);
+    }
+  }
+  deserialize(literal) {
+    if (!literal)
+      return null;
+    if (literal.Type !== 'Blob')
+      throw new PlatformTypeError(this.name, 'Blob', literal.Type);
+    const blobLit = literals.hydrate(literal);
+    return blobLit.asNodeBuffer();
+  }
+}
+
 class PlatformApiTypeFolder extends PlatformApiType {
   constructor(name, fields=[]) {
     super(name, 'Folder');
     this.fields = fields;
   }
   serialize(value) {
-    return new FolderLiteral(this.name, this.fields
+    return new literals.Folder(this.name, this.fields
         .map(field => field.serialize(value[field.name])))
   }
   deserialize(literal) {
@@ -116,7 +147,7 @@ class PlatformApiTypeTuple extends PlatformApiType {
   serialize(value) {
     if (value.length !== this.slots.length)
       throw new Error(`Tuple of ${this.slots.length} slots can't serialize ${value.length} fields`);
-    return new FolderLiteral(this.name, this.slots
+    return new literals.Folder(this.name, this.slots
         .map((field, idx) => {
           const literal = field.serialize(value[idx]);
           literal.Name = ''+(idx+1);
@@ -157,7 +188,7 @@ class PlatformApiTypeTuple extends PlatformApiType {
 
 PlatformApiType.from = function TypeFromRaw(source, name) {
   if (source == null)
-    return new PlatformApiTypeNull(name);
+    return new PlatformApiTypeEmpty(name);
 
   // recognize a constructor vs. a literal default-value
   const sourceIsBareFunc = source.constructor === Function;
@@ -214,11 +245,12 @@ PlatformApiType.from = function TypeFromRaw(source, name) {
 }
 
 module.exports = {
+  Type: PlatformApiType,
+
   Error: PlatformTypeError,
   String: PlatformApiTypeString,
-  Null: PlatformApiTypeNull,
+  Empty: PlatformApiTypeEmpty,
   Js: PlatformApiTypeJs,
   Folder: PlatformApiTypeFolder,
   Tuple: PlatformApiTypeTuple,
-  Type: PlatformApiType,
 };
