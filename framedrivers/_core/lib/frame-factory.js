@@ -1,4 +1,5 @@
 const {Framework} = require('./framework');
+const apiTypes = require('./api-types');
 
 exports.Frame =
 class Frame {
@@ -11,7 +12,17 @@ exports.DataFrame =
 class DataFrame extends exports.Frame {
   constructor(name, config) {
     super(name);
-    this.config = config; // TODO
+    this.type = 'data';
+
+    const legacyKeyMapper = config.legacyKeyMapper || ((words) => words.join(''));
+    this.frames = Object
+      .keys(config.fields)
+      .sort()
+      .map(fieldName => ({
+        name: fieldName,
+        legacyName: legacyKeyMapper(fieldName.split(' ')),
+        inner: apiTypes.Type.from(config.fields[fieldName]),
+      }));
   }
 }
 
@@ -19,7 +30,21 @@ exports.InterfaceFrame =
 class InterfaceFrame extends exports.Frame {
   constructor(name, config) {
     super(name);
-    this.config = config; // TODO
+    this.type = 'interface';
+
+    this.frames = Object
+      .keys(config)
+      .sort()
+      .map(funcName => {
+        const func = config[funcName];
+        const opts = {
+          name: funcName,
+          impl: func.impl,
+        };
+        if (func.input) opts.input = apiTypes.Type.from(func.input);
+        if (func.output) opts.output = apiTypes.Type.from(func.output);
+        return opts;
+      });
   }
 }
 
@@ -27,7 +52,7 @@ exports.FunctionFrame =
 class FunctionFrame extends exports.Frame {
   constructor(name, config) {
     super(name);
-    this.config = config; // TODO
+    //this.config = config; // TODO
   }
 }
 

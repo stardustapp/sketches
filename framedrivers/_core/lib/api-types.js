@@ -15,6 +15,7 @@ class PlatformApiType {
   constructor(name, type) {
     this.name = name;
     this.type = type;
+    if (!type) throw new Error(`missing type`);
   }
 }
 
@@ -214,6 +215,9 @@ PlatformApiType.from = function TypeFromRaw(source, name) {
           b => JSON.stringify(b),
           s => JSON.parse(s));
 
+    case Buffer:
+      return new PlatformApiTypeBlob(name);
+
     // nested data structures
     case Object: // TODO: better way to detect structures
       if (sourceIsBareFunc) {
@@ -229,13 +233,13 @@ PlatformApiType.from = function TypeFromRaw(source, name) {
         return new PlatformApiTypeFolder(name, fields);
       }
 
-    case PlatformApi:
+    case PlatformApiType:
       if (sourceIsBareFunc)
         throw new Error(`PlatformApi must be passed as a created instance`);
-      if (givenValue.structType.name)
+      if (givenValue.name)
         throw new Error(`BUG: reused PlatformApi renaming`);
-      givenValue.structType.name = name;
-      return givenValue.structType;
+      givenValue.name = name;
+      return givenValue;
 
     case Symbol:
       switch (givenValue) {

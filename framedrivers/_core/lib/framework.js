@@ -9,6 +9,13 @@ class Framework {
     // TODO: decompose frames
   }
 
+  describe() {
+    return {
+      metadata: this.metadata,
+      frames: this.allFrames,
+    };
+  }
+
   newExport() {
     return new this.exportedFrame();
   }

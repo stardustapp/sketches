@@ -28,13 +28,13 @@ const timeout = function(ms) {
 }
 
 exports.tupleOf = function(...items) {
-  const tuple = new apiTypes.Tuple(null);
+  const tuple = new apiTypes.Tuple('');
   tuple.items = items;
   return tuple;
 }
 exports.listOf = function(item) {
   // TODO
-  const list = new apiTypes.Type('Folder');
+  const list = new apiTypes.Type('', 'Folder');
   list.item = item;
   return list;
 }
@@ -78,16 +78,20 @@ exports.FrameDriver = class FrameDriver {
       if (!pong.Ok) throw new Error(`ping wasn't okay.`);
       console.log('    profile server is reachable');
 
+      console.log('sending framework', JSON.stringify(this.framework.describe(), null, 2));
       const helloEntry = new apiLiterals.Folder('', [
         new apiLiterals.String('identity token', this.identityToken),
-        new apiLiterals.String('framework', JSON.stringify(this.framework)),
+        new apiLiterals.String('framework', JSON.stringify(this.framework.describe())),
       ]);
-      console.log('sending', helloEntry);
       const introduction = await skylink.volley({
         Op: 'invoke',
         Path: '/domain/introduce-driver/invoke',
         Input: helloEntry,
       });
+      if (!introduction.Ok) {
+        if (introduction.Output) console.log(introduction.Output.StringValue);
+        throw new Error(`failed to perform introduction with server.`);
+      }
       console.log('--> launched driver session', introduction);
 
       // this.framework.newExport();
