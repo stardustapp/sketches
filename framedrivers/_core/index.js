@@ -40,6 +40,7 @@ exports.listOf = function(item) {
 }
 
 const {FrameBuilder} = require('./lib/frame-factory.js');
+const {Framework} = require('./lib/framework.js');
 
 function printError(prefix, {message, stack}) {
   console.log(prefix, message);
@@ -61,7 +62,7 @@ exports.FrameDriver = class FrameDriver {
       cb.call(builder);
       console.log('--> ran framedriver setup callback');
 
-      this.framework = builder.compile();
+      this.framework = new Framework(builder);
       console.log('==> successfully built driver framework');
       return this;
 

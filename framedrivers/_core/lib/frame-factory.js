@@ -1,10 +1,10 @@
-const {Framework} = require('./framework');
 const apiTypes = require('./api-types');
 
 exports.Frame =
 class Frame {
   constructor(name) {
     this.name = name;
+    this.__frame = true;
   }
 }
 
@@ -12,10 +12,10 @@ exports.DataFrame =
 class DataFrame extends exports.Frame {
   constructor(name, config) {
     super(name);
-    this.type = 'data';
+    this.type = 'Data';
 
     const legacyKeyMapper = config.legacyKeyMapper || ((words) => words.join(''));
-    this.frames = Object
+    this.fields = Object
       .keys(config.fields)
       .sort()
       .map(fieldName => ({
@@ -30,21 +30,12 @@ exports.InterfaceFrame =
 class InterfaceFrame extends exports.Frame {
   constructor(name, config) {
     super(name);
-    this.type = 'interface';
+    this.type = 'Interface';
 
-    this.frames = Object
+    this.fields = Object
       .keys(config)
       .sort()
-      .map(funcName => {
-        const func = config[funcName];
-        const opts = {
-          name: funcName,
-          impl: func.impl,
-        };
-        if (func.input) opts.input = apiTypes.Type.from(func.input);
-        if (func.output) opts.output = apiTypes.Type.from(func.output);
-        return opts;
-      });
+      .map(funcName => new exports.FunctionFrame(funcName, config[funcName]));
   }
 }
 
@@ -52,7 +43,12 @@ exports.FunctionFrame =
 class FunctionFrame extends exports.Frame {
   constructor(name, config) {
     super(name);
-    //this.config = config; // TODO
+    this.type = 'Function';
+    //this.input = apiTypes.Type.from(config.input);
+    //this.output = apiTypes.Type.from(config.output);
+    this.input = config.input;
+    this.output = config.output;
+    this.impl = config.impl;
   }
 }
 
@@ -76,9 +72,6 @@ class FrameBuilder {
     const frames = new Set(this.frames.values());
     if (!frames.has(frame)) throw new Error(`Can't export non-Frame objects`);
     this.exportedFrame = frame;
-  }
-  compile() {
-    return new Framework(this);
   }
 
   addFrame(frame) {

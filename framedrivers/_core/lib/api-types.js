@@ -193,8 +193,13 @@ PlatformApiType.from = function TypeFromRaw(source, name) {
 
   // recognize a constructor vs. a literal default-value
   const sourceIsBareFunc = source.constructor === Function || source === JSON;
-  const typeFunc = sourceIsBareFunc ? source : source.constructor;
-  const givenValue = sourceIsBareFunc ? null : source;
+  let typeFunc = sourceIsBareFunc ? source : source.constructor;
+  let givenValue = sourceIsBareFunc ? null : source;
+
+  if (!sourceIsBareFunc && givenValue.__frame) {
+    typeFunc = PlatformApiType;
+    givenValue = {type: 'frame', frame: givenValue};
+  }
 
   //console.log('schema', name, 'type', typeFunc, 'default', givenValue);
   switch (typeFunc) {
