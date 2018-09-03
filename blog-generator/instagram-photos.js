@@ -17,7 +17,8 @@ Future.task(() => {
     const data = profile.loadDataStructure(photoPath, 2).wait();
 
     if (!data.instagramUrl || data.fullResUrl) {
-      return;
+      if (!process.argv.includes('--freshen'))
+        return;
     }
 
     const htmlBody = Future.fromPromise(
