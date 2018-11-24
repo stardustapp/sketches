@@ -86,7 +86,8 @@ Future.task(() => {
       siteTitle, siteSubtitle,
       pages, posts, photos,
       innerHtml, baseHref,
-    });
+    }).replace(/&#x2F;/g, '/')
+      .replace(/&#x3D;/g, '=');
   }
 
   function reversePath(path) {
