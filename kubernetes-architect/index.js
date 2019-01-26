@@ -139,6 +139,14 @@ Future.task(() => {
 
       if (service.subdomain) {
         const hostname = service.subdomain + '.' + config.baseHostname;
+        const tlsInfo = [];
+        if (service.useTls !== 'no') {
+          tlsInfo.push({
+            hosts: [ hostname ],
+            secretName: name + '-ssl',
+          });
+        }
+
         documents.push(yaml.dump({
           apiVersion: 'extensions/v1beta1',
           kind: 'Ingress',
@@ -147,7 +155,7 @@ Future.task(() => {
             name,
             namespace,
             annotations: {
-              'kubernetes.io/tls-acme': 'true',
+              'kubernetes.io/tls-acme': String(tlsInfo.length > 0),
             },
           },
           spec: {
@@ -163,10 +171,7 @@ Future.task(() => {
                 }],
               },
             }],
-            tls: [{
-              hosts: [ hostname ],
-              secretName: name + '-ssl',
-            }],
+            tls: tlsInfo,
           },
         }));
       }
@@ -221,6 +226,15 @@ Future.task(() => {
     const domainList = Object
         .keys(endpoint.domains)
         .map(x => endpoint.domains[x]);
+
+    const tlsInfo = [];
+    if (endpoint.useTls !== 'no') {
+      tlsInfo.push({
+        hosts: domainList,
+        secretName: name + '-ssl',
+      });
+    }
+
     documents.push(yaml.dump({
       apiVersion: 'extensions/v1beta1',
       kind: 'Ingress',
@@ -228,7 +242,7 @@ Future.task(() => {
         labels: { origin },
         name, namespace,
         annotations: {
-          'kubernetes.io/tls-acme': 'true',
+          'kubernetes.io/tls-acme': String(tlsInfo.length > 0),
         },
       },
       spec: {
@@ -244,10 +258,7 @@ Future.task(() => {
             }],
           },
         })),
-        tls: [{
-          hosts: domainList,
-          secretName: name + '-ssl',
-        }],
+        tls: tlsInfo,
       },
     }));
 
