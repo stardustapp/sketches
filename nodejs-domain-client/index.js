@@ -43,7 +43,7 @@ exports.StartClient = function (domain, profile, secret, context) {
       }
       future.return(client);
     }, err => {
-      console.log(`Couldn't open chart. Server said: ${err}`);
+      console.log(`Couldn't open chart. Server said:`, err);
       future.throw(err);
     });
   return future;
@@ -76,8 +76,11 @@ function loadDataStructure (path, depth) {
           value = {};
           folders[ent.Name] = value;
           break;
-        case 'File':
-          const load = () => this.callApi('loadFile', path+'/'+ent.Name);
+        case 'Blob':
+          // const load = () => this.callApi('loadFile', path+'/'+ent.Name);
+          const load = () => ({wait() {
+            return Buffer.from(ent.Data, 'base64').toString('utf8');
+          }});
           value = {load};
           break;
         default:

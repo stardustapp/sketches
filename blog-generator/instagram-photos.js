@@ -11,7 +11,7 @@ Future.task(() => {
   console.log('Connecting to profile server...');
   profile = StartEnvClient('blog').wait();
 
-  const path = '/persist/blog/photos';
+  const path = '/data/blog/photos';
   profile.listChildNames(path).wait().map(slug => {
     const photoPath = path+'/'+slug;
     const data = profile.loadDataStructure(photoPath, 2).wait();
