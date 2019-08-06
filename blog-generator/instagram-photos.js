@@ -57,9 +57,9 @@ Future.task(() => {
     profile.callApi('putString', photoPath+'/taken at', takenAt.toISOString()).wait();
     profile.callApi('putString', photoPath+'/alternative', altText).wait();
     profile.callApi('putString', photoPath+'/full res url', display_url).wait();
-    profile.callApi('store', photoPath+'/dimensions', Skylink.toEntry('dimensions', {
-      width: ''+dimensions.width,
-      height: ''+dimensions.height})).wait();
+    // profile.callApi('store', photoPath+'/dimensions', Skylink.toEntry('dimensions', {
+    //   width: ''+dimensions.width,
+    //   height: ''+dimensions.height})).wait();
     profile.callApi('putString', photoPath+'/preview url', previewUrl).wait();
   });
 

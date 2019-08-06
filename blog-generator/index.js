@@ -14,6 +14,7 @@ Future.task(() => {
 
   console.log('Loading blog configuration...');
   const config = profile.loadDataStructure('/config/blog', 3).wait();
+
   const siteTitle = config.siteTitle || 'New Blog';
   const siteSubtitle = config.siteSubtitle || 'Content goes here';
   const sections = config.sections || {};
