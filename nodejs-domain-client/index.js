@@ -79,7 +79,9 @@ function loadDataStructure (path, depth) {
         case 'Blob':
           // const load = () => this.callApi('loadFile', path+'/'+ent.Name);
           const load = () => ({wait() {
-            return Buffer.from(ent.Data, 'base64').toString('utf8');
+            const buff = Buffer.from(ent.Data, 'base64');
+            buff.mime = ent.Mime;
+            return buff;
           }});
           value = {load};
           break;
