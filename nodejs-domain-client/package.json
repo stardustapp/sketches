@@ -9,7 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "fibers": "^2.0.2",
+    "fibers": "^4.0.1",
     "node-fetch": "^2.1.2",
     "ws": "^5.1.1"
   }

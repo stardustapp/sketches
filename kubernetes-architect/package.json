@@ -9,7 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "fibers": "^2.0.2",
+    "fibers": "^4.0.1",
     "js-yaml": "^3.11.0"
   }
 }
