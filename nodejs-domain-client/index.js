@@ -1,17 +1,17 @@
-root.window = root;
-root.WebSocket = require('ws');
-root.fetch = require('node-fetch');
+global.window = global;
+global.WebSocket = require('ws');
+global.fetch = require('node-fetch');
 
 // this is so bad.
 require('./app-suite/js-core/constants.js');
 
-root.Launchpad = exports.Launchpad = require('./app-suite/js-core/orbiter/launchpad.js');
-root.Orbiter = exports.Orbiter = require('./app-suite/js-core/orbiter/orbiter.js');
-root.MountTable = exports.MountTable = require('./app-suite/js-core/orbiter/mount-table.js');
-root.SkylinkMount = exports.SkylinkMount = require('./app-suite/js-core/orbiter/mounts/skylink.js');
+global.Launchpad = exports.Launchpad = require('./app-suite/js-core/orbiter/launchpad.js');
+global.Orbiter = exports.Orbiter = require('./app-suite/js-core/orbiter/orbiter.js');
+global.MountTable = exports.MountTable = require('./app-suite/js-core/orbiter/mount-table.js');
+global.SkylinkMount = exports.SkylinkMount = require('./app-suite/js-core/orbiter/mounts/skylink.js');
 
-root.Skylink = exports.Skylink = require('./app-suite/js-core/skylink/client.js');
-root.SkylinkWsTransport = exports.SkylinkWsTransport = require('./app-suite/js-core/skylink/transports/ws.js');
+global.Skylink = exports.Skylink = require('./app-suite/js-core/skylink/client.js');
+global.SkylinkWsTransport = exports.SkylinkWsTransport = require('./app-suite/js-core/skylink/transports/ws.js');
 
 const Future = require('fibers/future');
 
