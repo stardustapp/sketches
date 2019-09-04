@@ -23,15 +23,15 @@ Future.task(() => {
   const layouts = new Map;
   Object.keys(config.layouts).forEach(fileName =>
     layouts.set(basename(fileName, '.html'),
-      config.layouts[fileName].load().wait()));
+      config.layouts[fileName].load().wait().toString('utf-8')));
 
   console.log('Loading pages and posts...');
 
   function renderInnerHtml(content) {
     if (content.html) {
-      return content.html.load().wait();
+      return content.html.load().wait().toString('utf-8');
     } else if (content.markdown) {
-      return markdown.toHTML(content.markdown.load().wait());
+      return markdown.toHTML(content.markdown.load().wait().toString('utf-8'));
     }
     throw new Error("No innerHtml for content");
   }
@@ -124,14 +124,14 @@ Future.task(() => {
 
   console.log('Uploading', htmlFiles.length, 'HTML files to web hosting...');
   htmlFiles.forEach(({path, body}) => {
-    hosting.callApi('putFile', '/domain/public/web'+path, body, 'text/html; charset=utf-8').wait();
+    hosting.callApi('putBlob', '/domain/public/web'+path, body, 'text/html; charset=utf-8').wait();
   });
 
   const assetKeys = Object.keys(config.assets);
   console.log('Uploading', assetKeys.length, 'site assets...');
   assetKeys.forEach(asset => {
     const body = config.assets[asset].load().wait();
-    hosting.callApi('putFile', '/domain/public/web'+'/'+asset, body, 'text/css; charset=utf-8').wait(); // TODO: copy source MIME
+    hosting.callApi('putBlob', '/domain/public/web'+'/'+asset, body).wait(); // TODO: copy source MIME
   });
 
   const endTime = new Date();
