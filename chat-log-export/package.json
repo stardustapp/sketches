@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "async-throttle": "^1.1.0",
     "fibers": "^4.0.1",
     "minimist": "^1.2.0",
     "mkdirp": "^0.5.1",

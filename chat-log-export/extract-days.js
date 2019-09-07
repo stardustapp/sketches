@@ -1,9 +1,13 @@
 const Future = require('fibers/future');
 const moment = require('moment');
 const path = require('path');
+const createThrottle = require('async-throttle')
+
 const mkdirp = Future.wrap(require('mkdirp'));
 const writeFile = Future.wrap(require('fs').writeFile);
 const accessFile = Future.wrap(require('fs').access);
+
+const {LogLine} = require('./log-line.js');
 
 //////////////////////////////
 // CONFIGURATION PHASE
@@ -97,125 +101,28 @@ Future.task(() => {
     //////////////////////////////
     // EXTRACTION PHASE
 
-    const lines = [];
+    const promises = [];
+    const lineThrottle = createThrottle(50);
     for (let i = parseInt(horizon); i <= parseInt(latest); i++) {
-      let entry;
-      try {
-        entry = profile.loadDataStructure(dayPath+'/'+i.toString(), 2).wait();
-      } catch (err) {
+      const treePath = dayPath+'/'+i.toString();
+      const structFuture = profile.loadDataStructure(treePath, 2);
+      const promise = lineThrottle(() => structFuture.promise().then(struct => {
+        const entry = new LogLine(struct);
+        const line = entry.stringify();
+        if (line)
+          return `[${entry.timestamp}] ${line}`;
+        return null;
+      }, err => {
         console.log(i, err);
         process.stdout.write('          '+'\t');
-        continue;
-      }
-      if (!entry.params) entry.params = [];
-      entry.params = Object.keys(entry.params).map(key => entry.params[key]);
-      entry.timestamp = moment.utc(entry.timestamp).format('YYYY-MM-DD HH:mm:ss');
-
-      if (entry.command === 'PRIVMSG' && entry.params[1] && entry.params[1].startsWith('\x01ACTION ')) {
-        entry.command = 'CTCP';
-        entry.params[1] = entry.params[1].slice(1, -1);
-      }
-
-      let line;
-      switch (entry.command) {
-
-        // messages
-        case 'PRIVMSG':
-          line = `<${entry.prefixName}> ${entry.params[1]}`;
-          break;
-        case 'NOTICE':
-          line = `[${entry.prefixName || entry.sender}] ${entry.params[1] || entry.text}`;
-          break;
-
-        case 'MODE':
-          line = `* ${entry.prefixName} set ${entry.params.slice(1).join(' ')}`;
-          break;
-        case 'INVITE':
-          line = `* ${entry.prefixName} invited ${entry.params[0]} to ${entry.params[1]}`;
-          break;
-
-        // channel membership changes
-        case 'JOIN':
-        case 'PART':
-        case 'QUIT':
-          const symbol = {JOIN: '→', PART: '←', QUIT: '⇐'}[entry.command];
-          const verb = {JOIN: 'joined '+entry.params[0], PART: 'left', QUIT: 'quit'}[entry.command];
-          const msgIdx = (entry.command == 'QUIT') ? 0 : 1;
-          const suffix = entry.params[msgIdx] ? `: ${entry.params[msgIdx]}` : '';
-          line = `${symbol} ${entry.prefixName} ${verb} (${entry.prefixUser}@${entry.prefixHost})${suffix}`;
-          break;
-        case 'KICK':
-          line = `* ${entry.params[1]} was kicked by ${entry.prefixName} (${entry.params[2]})`;
-          break;
-        case 'NICK':
-          line = `* ${entry.prefixName} → ${entry.params[0]}`;
-          break;
-
-        case 'TOPIC':
-          line = `* ${entry.prefixName} set the topic to: ${entry.params[1]}`;
-          break;
-        case '332':
-          line = `* Topic is: ${entry.params[2]}`;
-          break;
-        case '328':
-          line = `* Channel website: ${entry.params[2]}`;
-          break;
-        case '333':
-          const topicTime = moment(parseInt(entry.params[3])*1000)
-              .format('YYYY-MM-DD HH:mm:ss');
-          line = `* Set by ${entry.params[2]} at ${topicTime}`;
-          break;
-
-        case '353': // NAMES
-        case '366': // end NAMES
-        case '315': // end WHO
-          break;
-
-        // server-window logs
-        case 'LOG':
-          line = `* ${entry.text}`;
-          break;
-        case 'BLOCK':
-          const parts = [entry.params.join(' ')];
-          if (entry.text)
-            parts.push(entry.text.replace(/\n/g, '\n\t'));
-          line = `* ${parts.join('\n\t')}`;
-          break;
-        case 'ERROR':
-          line = `! ERROR: ${entry.params.join(' ')}`;
-          break;
-
-        case 'CTCP':
-          if (entry.params[1].startsWith('ACTION ')) {
-            line = `— ${entry.prefixName} ${entry.params[1].slice('ACTION '.length)}`;
-            break;
-          } else if (entry.params[1] === 'ACTION') {
-            line = `— ${entry.prefixName} ${entry.params[2]}`;
-            break;
-          }
-          // fall through to default
-        default:
-          if (entry.command.match(/^\d\d\d$/)) {
-            const sliceIdx = background ? 1 : 2;
-            line = ['*', entry.command, ...entry.params.slice(sliceIdx)].join(' ');
-            break;
-          }
-
-          console.log(i, entry);
-          process.stdout.write('          '+'\t');
-          line = [entry.command, ...entry.params].join(' ');
-      }
-
-      if (line) {
-        line = `[${entry.timestamp}] ${line}`;
-        //console.log(line);
-        lines.push(line);
-      }
+      }));
+      promises.push(promise);
     }
 
     //////////////////////////////
     // OUTPUT PHASE
 
+    const lines = Future.fromPromise(Promise.all(promises)).wait().filter(x => x);
     writeFile(dayFsPath, lines.join('\n')+'\n', 'utf-8').wait();
     process.stdout.write(`wrote ${lines.length} lines\n`);
   }
