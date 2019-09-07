@@ -1,19 +1,9 @@
-global.window = global;
 global.WebSocket = require('ws');
 global.fetch = require('node-fetch');
-
-// this is so bad.
-require('./app-suite/js-core/constants.js');
-
-global.Launchpad = exports.Launchpad = require('./app-suite/js-core/orbiter/launchpad.js');
-global.Orbiter = exports.Orbiter = require('./app-suite/js-core/orbiter/orbiter.js');
-global.MountTable = exports.MountTable = require('./app-suite/js-core/orbiter/mount-table.js');
-global.SkylinkMount = exports.SkylinkMount = require('./app-suite/js-core/orbiter/mounts/skylink.js');
-
-global.Skylink = exports.Skylink = require('./app-suite/js-core/skylink/client.js');
-global.SkylinkWsTransport = exports.SkylinkWsTransport = require('./app-suite/js-core/skylink/transports/ws.js');
+require('source-map-support').install();
 
 const Future = require('fibers/future');
+const {Launchpad, Orbiter} = require('@dustjs/client');
 
 exports.StartEnvClient = function (context) {
   const domain = process.env.STARDUST_DOMAIN || 'devmode.cloud';
