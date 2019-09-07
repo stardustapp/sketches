@@ -63,14 +63,20 @@ Future.task(() => {
   });
 
   posts.forEach(p => {
-    const publishedAt = moment(p.raw.publishedAt);
+    const publishedAt = moment.utc(p.raw.publishedAt);
     if (p.raw.publishedAt && publishedAt.isValid()) {
       p.publishDate = publishedAt.format('LL [at] LT');
+      p.publishedAt = p.raw.publishedAt;
+      p.publishedMoment = publishedAt;
       p.path = `posts/${publishedAt.format('YYYY')}/${p.path}`;
     } else {
       p.path = `posts/drafts/${p.path}`;
     }
   });
+  posts.sort(function (a, b) {
+    return (b.publishedAt||'').localeCompare(a.publishedAt||'');
+  });
+  const publishedPosts = posts.filter(x => x.publishDate);
 
   console.log('Generating blog files...');
 
@@ -115,11 +121,38 @@ Future.task(() => {
   renderContentNodes(pages, 'page');
   renderContentNodes(posts, 'post');
 
+  const nowM = moment.utc();
   htmlFiles.push({
     path: '/index.html',
     body: renderPage({
-      posts, pages, photos,
+      pages, photos,
+      recentPosts: publishedPosts
+        .slice(0, 5)
+        .filter(x => x.publishedMoment.diff(nowM, 'years') > -1),
     }, 'home'),
+  });
+
+  const newestYear = publishedPosts[0].publishedMoment.year();
+  const oldestYear = publishedPosts.slice(-1)[0].publishedMoment.year();
+  const postTimes = [];
+  for (let year = newestYear; year >= oldestYear; year--) {
+    for (let month = 11; month >= 0; month--) {
+      const posts = publishedPosts.filter(x =>
+        x.publishedMoment.year() === year &&
+        x.publishedMoment.month() === month);
+      if (posts.length === 0) continue;
+
+      const timeStr = posts[0].publishedMoment.format('MMMM YYYY');
+      postTimes.push({ year, month, timeStr, posts });
+    }
+  }
+
+  htmlFiles.push({
+    path: '/posts/archive.html',
+    body: renderPage({
+      baseHref: '..',
+      postTimes,
+    }, 'archive'),
   });
 
   console.log('Uploading', htmlFiles.length, 'HTML files to web hosting...');
@@ -131,7 +164,7 @@ Future.task(() => {
   console.log('Uploading', assetKeys.length, 'site assets...');
   assetKeys.forEach(asset => {
     const body = config.assets[asset].load().wait();
-    hosting.callApi('putBlob', '/domain/public/web'+'/'+asset, body).wait(); // TODO: copy source MIME
+    hosting.callApi('putBlob', '/domain/public/web'+'/'+asset, body, body.mime).wait();
   });
 
   const endTime = new Date();
