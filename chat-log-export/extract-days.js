@@ -3,6 +3,7 @@ const moment = require('moment');
 const path = require('path');
 const mkdirp = Future.wrap(require('mkdirp'));
 const writeFile = Future.wrap(require('fs').writeFile);
+const accessFile = Future.wrap(require('fs').access);
 
 //////////////////////////////
 // CONFIGURATION PHASE
@@ -11,7 +12,7 @@ const argv = require('minimist')(process.argv.slice(2), {
   string: ['date'],
 });
 const {network, channel, query, background, date, all, output} = argv;
-if (!network ) {
+if (!network) {
   console.warn('--network= is required');
   process.exit(2);
 }
@@ -20,7 +21,7 @@ if (!channel && !query && !background) {
   process.exit(2);
 }
 if (!date && !all) {
-  console.warn('One of --date=YYYY-MM-DD or --all=yes is required');
+  console.warn('One of --date=YYYY-MM-DD or --all=[yes/missing] is required');
   process.exit(2);
 }
 
@@ -39,6 +40,9 @@ Future.task(() => {
 
   const exportsPath = path.join(output || 'output', network, channel || query || 'server');
   mkdirp(exportsPath).wait();
+
+  // let days age a bit before we grab them
+  const safeCutoff = moment.utc().subtract(4, 'hour').startOf('day');
 
   //////////////////////////////
   // ENUMERATION PHASE
@@ -66,6 +70,21 @@ Future.task(() => {
     const dayStr = day.format('YYYY-MM-DD');
     day.add(1, 'day');
     const dayPath = inputPath + '/' + dayStr;
+    const dayFsPath = path.join(exportsPath, dayStr+'.txt');
+
+    if (all === 'missing') {
+      if (day > safeCutoff)
+        continue; // the day is too new, ignore for now
+
+      try {
+        accessFile(dayFsPath).wait();
+        continue; // we already downloaded the day
+      } catch (err) {
+        if (err.code !== 'ENOENT')
+          throw err;
+      }
+    }
+
     process.stdout.write(dayStr + '\t');
 
     horizon = profile.callApi('loadString', dayPath+'/horizon').wait();
@@ -197,8 +216,7 @@ Future.task(() => {
     //////////////////////////////
     // OUTPUT PHASE
 
-    writeFile(path.join(exportsPath, dayStr+'.txt'),
-        lines.join('\n'), 'utf-8').wait();
+    writeFile(dayFsPath, lines.join('\n')+'\n', 'utf-8').wait();
     process.stdout.write(`wrote ${lines.length} lines\n`);
   }
 
