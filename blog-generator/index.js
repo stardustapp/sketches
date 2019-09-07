@@ -92,12 +92,13 @@ Future.task(() => {
     if (!layouts.has('default')) throw new Error(
       `Layout 'default' not found`);
 
-    return Mustache.render(layouts.get('default'), {
+    const pageBody = Mustache.render(layouts.get('default'), {
       siteTitle, siteSubtitle,
       pages, posts, photos,
       innerHtml, baseHref,
     }).replace(/&#x2F;/g, '/')
       .replace(/&#x3D;/g, '=');
+    return Buffer.from(pageBody, 'utf-8');
   }
 
   function reversePath(path) {
