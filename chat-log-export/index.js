@@ -14,7 +14,7 @@ process.argv.push('-q');
 const argv = require('minimist')(process.argv.slice(2), {
   string: ['date'],
 });
-const {network, channel, query, background, date, auto, output, formats} = argv;
+const {network, channel, query, background, date, auto, output, formats, curate} = argv;
 const allContexts = !channel && !query && !background;
 const logFormats = (formats || 'json,text').split(',');
 
@@ -25,11 +25,18 @@ if (!date && !auto) {
   process.exit(2);
 }
 
+// let days age a bit before we grab them
+const safeCutoff = moment.utc().subtract(4, 'hour').startOf('day');
+
+// curation feature, provide --curate=dryrun or --curate=delete
+const curateCutoff = moment.utc().subtract(1, 'month').startOf('day');
+if (curate && date) throw new Error(
+  `Data curation cannot be combined with specific-date extraction.`);
+if (curateCutoff >= safeCutoff) throw new Error(
+  `BUG: Data curation cutoff isn't before the safety cutoff. Sheepishly doing nothing.`);
+
 const {StartEnvClient, StartClient} = require('../nodejs-domain-client');
 Future.task(() => {
-
-  // let days age a bit before we grab them
-  const safeCutoff = moment.utc().subtract(4, 'hour').startOf('day');
 
   console.log('Connecting to profile servers...');
   profile = StartEnvClient('irc').wait();
@@ -76,6 +83,7 @@ Future.task(() => {
     }
 
     for (const context of Object.keys(contexts)) {
+      console.log(contexts[context]);
 
       //////////////////////////////
       // PARTITION SELECTION
@@ -86,7 +94,6 @@ Future.task(() => {
         const dateGrain = ['year', 'month', 'day'][date.split('-').length-1];
         endDate = startDate.clone().add(1, dateGrain).subtract(1, 'day');
       } else if (auto) {
-        console.log(contexts[context]+'/horizon');
         startDate = moment.utc(profile.callApi('loadString', contexts[context]+'/horizon').wait(), 'YYYY-MM-DD');
         endDate = moment.utc(profile.callApi('loadString', contexts[context]+'/latest').wait(), 'YYYY-MM-DD');
 
@@ -101,12 +108,13 @@ Future.task(() => {
         if (endDate < startDate) {
           throw new Error(`I found a negative number of days to collect. Huh?`);
         }
-      }
+      } else throw new Error(
+        `BUG: no partition selector selected`);
 
       //////////////////////////////
       // EXTRACTION PHASE
 
-      ExtractDays(profile, {
+      const presentDays = ExtractDays(profile, {
         inputPath: contexts[context],
         exportsPath: path.join(output || 'output', network, context),
         startDate, endDate,
@@ -115,6 +123,33 @@ Future.task(() => {
         formats: logFormats,
       });
 
+      //////////////////////////////
+      // CURATION PHASE
+
+      if (curate && startDate < curateCutoff && presentDays.length > 1) {
+        const oldDays = presentDays.slice(0, -1)
+          .filter(x => x.dayM < curateCutoff && !x.fresh)
+          .map(x => x.dayStr);
+        const newStartDay = presentDays
+          .find(x => x.dayM >= curateCutoff)
+          || presentDays.slice(-1)[0];
+
+        switch (curate) {
+          case 'dryrun':
+            console.log('Curation DRYRUN: Would unlink', oldDays.join(' '), 'and set /horizon to', newStartDay.dayStr);
+            break;
+
+          case 'delete':
+            for (const dayStr of oldDays) {
+              profile.callApi('unlink', contexts[context]+'/'+dayStr).wait();
+            }
+            profile.callApi('putString', contexts[context]+'/horizon', newStartDay.dayStr).wait();
+            console.log('Curation: Deleted', oldDays.length, 'partition(s) of', context, 'starting from', oldDays[0], 'and set horizon to', newStartDay.dayStr);
+            break;
+        }
+      }
+
+      console.log();
     } // context loop
   } // network loop
 

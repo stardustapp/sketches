@@ -24,10 +24,12 @@ exports.ExtractDays = function (profile, {
 
   //////////////////////////////
   // ENUMERATION PHASE
+  const presentDays = [];
 
   let day = startDate.clone();
   while (day <= endDate) {
     const dayStr = day.format('YYYY-MM-DD');
+    const dayM = day.clone();
     day.add(1, 'day');
     const dayPath = inputPath + '/' + dayStr;
     const dayFsPathTxt = path.join(exportsPath, dayStr+'.txt');
@@ -38,7 +40,11 @@ exports.ExtractDays = function (profile, {
         formats.includes('text') && accessFile(dayFsPathTxt).wait();
         try {
           formats.includes('json') && accessFile(dayFsPathJson).wait();
-          continue; // we already downloaded the day
+
+          // we already downloaded the day
+          presentDays.push({dayStr, dayM, fresh: false});
+          continue;
+
         } catch (err) {
           if (err.code !== 'ENOENT')
             throw err;
@@ -95,7 +101,9 @@ exports.ExtractDays = function (profile, {
       writeFile(dayFsPathTxt, lines.join('\n')+'\n', 'utf-8').wait();
       process.stdout.write(`wrote ${lines.length} lines\n`);
     }
+
+    presentDays.push({dayStr, dayM, fresh: true});
   }
 
-  console.log();
+  return presentDays;
 }
