@@ -108,7 +108,7 @@ Future.task(() => {
         inputPath: contexts[context],
         exportsPath: path.join(output || 'output', network, context),
         startDate, endDate,
-        onlyIfMissing: auto !== 'all',
+        onlyIfMissing: auto === 'missing',
         isServerLog: context === 'server log',
       });
 
