@@ -66,7 +66,7 @@ exports.ExtractDays = function (profile, {
     for (let i = parseInt(horizon); i <= parseInt(latest); i++) {
       const treePath = dayPath+'/'+i.toString();
       const structFuture = profile.loadDataStructure(treePath, 2).promise();
-      structPromises.push(structFuture);
+      structPromises.push(structFuture.catch(err => ({index: i, missing: true})));
       const promise = lineThrottle(() => structFuture.then(struct => {
         const entry = new LogLine(i, struct);
         const line = entry.stringify({isServerLog});
