@@ -14,8 +14,10 @@ process.argv.push('-q');
 const argv = require('minimist')(process.argv.slice(2), {
   string: ['date'],
 });
-const {network, channel, query, background, date, auto, output} = argv;
+const {network, channel, query, background, date, auto, output, formats} = argv;
 const allContexts = !channel && !query && !background;
+const logFormats = (formats || 'json,text').split(',');
+
 if (!date && !auto) {
   console.warn('One of --date=YYYY-MM-DD or --auto=[all/missing] is required');
   console.warn('To limit what is downloaded, you can add --network=...');
@@ -110,6 +112,7 @@ Future.task(() => {
         startDate, endDate,
         onlyIfMissing: auto === 'missing',
         isServerLog: context === 'server log',
+        formats: logFormats,
       });
 
     } // context loop

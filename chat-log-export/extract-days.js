@@ -8,6 +8,7 @@ const lineThrottle = createThrottle(50);
 const mkdirp = Future.wrap(require('mkdirp'));
 const writeFile = Future.wrap(require('fs').writeFile);
 const accessFile = Future.wrap(require('fs').access);
+const gzip = Future.wrap(require('zlib').gzip);
 
 const {LogLine} = require('./log-line.js');
 
@@ -16,6 +17,7 @@ exports.ExtractDays = function (profile, {
   startDate, endDate,
   onlyIfMissing,
   isServerLog,
+  formats=['json', 'text'],
 }) {
 
   mkdirp(exportsPath).wait();
@@ -28,12 +30,19 @@ exports.ExtractDays = function (profile, {
     const dayStr = day.format('YYYY-MM-DD');
     day.add(1, 'day');
     const dayPath = inputPath + '/' + dayStr;
-    const dayFsPath = path.join(exportsPath, dayStr+'.txt');
+    const dayFsPathTxt = path.join(exportsPath, dayStr+'.txt');
+    const dayFsPathJson = path.join(exportsPath, dayStr+'.jsonl.gz');
 
     if (onlyIfMissing) {
       try {
-        accessFile(dayFsPath).wait();
-        continue; // we already downloaded the day
+        formats.includes('text') && accessFile(dayFsPathTxt).wait();
+        try {
+          formats.includes('json') && accessFile(dayFsPathJson).wait();
+          continue; // we already downloaded the day
+        } catch (err) {
+          if (err.code !== 'ENOENT')
+            throw err;
+        }
       } catch (err) {
         if (err.code !== 'ENOENT')
           throw err;
@@ -53,10 +62,12 @@ exports.ExtractDays = function (profile, {
     // EXTRACTION PHASE
 
     const promises = [];
+    const structPromises = [];
     for (let i = parseInt(horizon); i <= parseInt(latest); i++) {
       const treePath = dayPath+'/'+i.toString();
-      const structFuture = profile.loadDataStructure(treePath, 2);
-      const promise = lineThrottle(() => structFuture.promise().then(struct => {
+      const structFuture = profile.loadDataStructure(treePath, 2).promise();
+      structPromises.push(structFuture);
+      const promise = lineThrottle(() => structFuture.then(struct => {
         const entry = new LogLine(i, struct);
         const line = entry.stringify({isServerLog});
         if (line)
@@ -72,9 +83,18 @@ exports.ExtractDays = function (profile, {
     //////////////////////////////
     // OUTPUT PHASE
 
-    const lines = Future.fromPromise(Promise.all(promises)).wait().filter(x => x);
-    writeFile(dayFsPath, lines.join('\n')+'\n', 'utf-8').wait();
-    process.stdout.write(`wrote ${lines.length} lines\n`);
+    if (formats.includes('json')) {
+      const structs = Future.fromPromise(Promise.all(structPromises)).wait();
+      const structText = Buffer.from(structs.map(x => JSON.stringify(x)).join('\n'), 'utf-8');
+      const structGzip = gzip(structText).wait();
+      writeFile(dayFsPathJson, structGzip).wait();
+    }
+
+    if (formats.includes('text')) {
+      const lines = Future.fromPromise(Promise.all(promises)).wait().filter(x => x);
+      writeFile(dayFsPathTxt, lines.join('\n')+'\n', 'utf-8').wait();
+      process.stdout.write(`wrote ${lines.length} lines\n`);
+    }
   }
 
   console.log();
