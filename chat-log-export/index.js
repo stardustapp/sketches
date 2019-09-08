@@ -131,12 +131,18 @@ Future.task(() => {
           .filter(x => x.dayM < curateCutoff && !x.fresh)
           .map(x => x.dayStr);
         const newStartDay = presentDays
-          .find(x => x.dayM >= curateCutoff)
+          .find(x => x.dayM >= curateCutoff || x.fresh)
           || presentDays.slice(-1)[0];
+
+        if (oldDays.length < 1) {
+          console.log('Curation: No action to take on', context);
+          console.log();
+          continue;
+        }
 
         switch (curate) {
           case 'dryrun':
-            console.log('Curation DRYRUN: Would unlink', oldDays.join(' '), 'and set /horizon to', newStartDay.dayStr);
+            console.log('Curation DRYRUN: Would unlink', oldDays.join(' '), 'and set /horizon to', newStartDay.dayStr, 'for', context);
             break;
 
           case 'delete':
