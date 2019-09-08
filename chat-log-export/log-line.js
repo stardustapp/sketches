@@ -79,8 +79,17 @@ exports.LogLine = class LogLine {
           return `— ${this.prefixName} ${this.params[1].slice('ACTION '.length)}`;
         } else if (this.params[1] === 'ACTION') {
           return `— ${this.prefixName} ${this.params[2]}`;
+        } else {
+          return `* ${this.prefixName} sent CTCP ${this.params[1]} ${this.params[2] || ''}`;
         }
-        // fall through to default
+      case 'CTCP_ANSWER':
+        return `* ${this.prefixName} responded CTCP ${this.params[1]} ${this.params[2] || ''}`;
+
+      case 'CAP':
+        const direction = this.source === 'server' ? '<<<' : '>>>';
+        const paramOffset = this.source === 'server' ? 1 : 0;
+        return `${direction} CAP ${this.params.slice(paramOffset).join(' ')}`;
+
       default:
         if (this.command.match(/^\d\d\d$/)) {
           const sliceIdx = isServerLog ? 1 : 2;
