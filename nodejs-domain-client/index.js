@@ -27,6 +27,7 @@ exports.StartClient = function (domain, profile, secret, context) {
       const client = {
         orbiter,
         callApi,
+        listChildrenNames,
         loadDataStructure,
         listChildNames,
         // skylink: orbiter.mountTable.api,
@@ -42,6 +43,19 @@ exports.StartClient = function (domain, profile, secret, context) {
 function callApi (name, ...args) {
   const promise = this.orbiter.mountTable.api[name](...args);
   return Future.fromPromise(promise);
+}
+
+function listChildrenNames (path, predicate=()=>true) {
+  const api = this.callApi('enumerate', path, {
+    maxDepth: 1,
+  }).promise();
+
+  return Future.fromPromise(api.then(x => {
+    return x
+      .filter(y => y.Name)
+      .filter(predicate)
+      .map(y => y.Name);
+  }));
 }
 
 function loadDataStructure (path, depth) {

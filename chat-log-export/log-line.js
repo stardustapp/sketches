@@ -1,7 +1,8 @@
 const moment = require('moment');
 
 exports.LogLine = class LogLine {
-  constructor(struct) {
+  constructor(logIdx, struct) {
+    this.logIdx = logIdx;
     for (const key in struct) {
       this[key] = struct[key];
     }
@@ -16,7 +17,9 @@ exports.LogLine = class LogLine {
     }
   }
 
-  stringify() {
+  stringify({
+    isServerLog=false,
+  }) {
     switch (this.command) {
 
       // messages
@@ -80,11 +83,11 @@ exports.LogLine = class LogLine {
         // fall through to default
       default:
         if (this.command.match(/^\d\d\d$/)) {
-          const sliceIdx = background ? 1 : 2;
+          const sliceIdx = isServerLog ? 1 : 2;
           return ['*', this.command, ...this.params.slice(sliceIdx)].join(' ');
         }
 
-        console.log(i, entry);
+        console.log(this);
         process.stdout.write('          '+'\t');
         return [this.command, ...this.params].join(' ');
     }
