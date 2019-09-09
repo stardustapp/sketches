@@ -106,7 +106,10 @@ Future.task(() => {
           endDate.subtract(1, 'day');
         }
         if (endDate < startDate) {
-          throw new Error(`I found a negative number of days to collect. Huh?`);
+          console.log(`I found a negative number of days to collect.`);
+          console.log(`This is probably a very new log. Ignoring.`);
+          console.log();
+          continue;
         }
       } else throw new Error(
         `BUG: no partition selector selected`);
