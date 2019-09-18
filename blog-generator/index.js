@@ -9,8 +9,10 @@ Future.task(() => {
 
   const startTime = new Date();
   console.log('Connecting to profile servers...');
-  profile = StartEnvClient('blog').wait();
-  hosting = StartClient('gke.danopia.net', 'root', process.env.STARDUST_SECRET, 'blog').wait();
+  const profileFuture = StartEnvClient('blog');
+  const profile = profileFuture.wait();
+  const hostingFuture = StartClient('gke.danopia.net', 'root', process.env.STARDUST_SECRET, 'blog');
+  const hosting = hostingFuture.wait();
 
   console.log('Loading blog configuration...');
   const config = profile.loadDataStructure('/config/blog', 3).wait();
@@ -62,12 +64,14 @@ Future.task(() => {
     return struct;
   });
 
+  const outdatedCutoff = moment.utc().subtract(5, 'years');
   posts.forEach(p => {
     const publishedAt = moment.utc(p.raw.publishedAt);
     if (p.raw.publishedAt && publishedAt.isValid()) {
       p.publishDate = publishedAt.format('LL [at] LT');
       p.publishedAt = p.raw.publishedAt;
       p.publishedMoment = publishedAt;
+      p.isOutdated = publishedAt < outdatedCutoff;
       p.path = `posts/${publishedAt.format('YYYY')}/${p.path}`;
     } else {
       p.path = `posts/drafts/${p.path}`;
