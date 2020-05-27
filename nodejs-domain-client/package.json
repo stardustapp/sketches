@@ -10,7 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "@dustjs/client": "^0.1.1",
-    "fibers": "^4.0.1",
+    "fibers": "^4.0.3",
     "node-fetch": "^2.1.2",
     "source-map-support": "^0.5.13",
     "ws": "^5.1.1"
