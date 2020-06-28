@@ -10,6 +10,7 @@
   "author": "Daniel Lamando",
   "license": "MIT",
   "dependencies": {
+    "@dustjs/client-automaton": "^0.1.0",
     "aws-sdk": "^2.706.0"
   }
 }
