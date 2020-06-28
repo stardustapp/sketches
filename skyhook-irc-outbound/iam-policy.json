@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Sid": "ProcessSQS-irc-outbound",
+          "Effect": "Allow",
+          "Action": [
+              "sqs:GetQueueUrl",
+              "sqs:GetQueueAttributes",
+              "sqs:ReceiveMessage",
+              "sqs:ChangeMessageVisibility",
+              "sqs:ChangeMessageVisibilityBatch",
+              "sqs:DeleteMessage",
+              "sqs:DeleteMessageBatch"
+          ],
+          "Resource": "arn:aws:sqs:*:*:skyhook-irc-outbound.fifo"
+      }
+  ]
+}

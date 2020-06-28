@@ -1,0 +1,15 @@
+{
+  "name": "skyhook-irc-outbound",
+  "version": "0.1.0",
+  "description": "",
+  "type": "module",
+  "module": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Daniel Lamando",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.706.0"
+  }
+}
