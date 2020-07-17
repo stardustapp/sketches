@@ -23,7 +23,11 @@ Future.task(() => {
 
     console.log(`Fetching`, data.instagramUrl);
     const htmlBody = Future.fromPromise(
-      fetch(data.instagramUrl)
+      fetch(data.instagramUrl, {
+        headers: {
+          cookie: process.env.INSTAGRAM_COOKIES || '',
+        },
+      })
       .then(res => res.text())).wait();
     const jsonMatch = htmlBody.match(/window\._sharedData = ([^\n]+);/);
     const pageData = JSON.parse(jsonMatch[1]);
