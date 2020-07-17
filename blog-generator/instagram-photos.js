@@ -21,6 +21,7 @@ Future.task(() => {
         return;
     }
 
+    console.log(`Fetching`, data.instagramUrl);
     const htmlBody = Future.fromPromise(
       fetch(data.instagramUrl)
       .then(res => res.text())).wait();
