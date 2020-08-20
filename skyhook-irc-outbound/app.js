@@ -2,6 +2,9 @@ import { AutomatonBuilder } from '@dustjs/client-automaton'
 import AWS from 'aws-sdk'
 import { promisify } from 'util'
 
+if (!process.env.AWS_REGION) throw new Error(
+  `Missing AWS configuration!`);
+
 const sleep = promisify(setTimeout);
 
 class IrcNetwork {
