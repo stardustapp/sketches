@@ -1,14 +1,5 @@
-import * as flags from "https://deno.land/std@0.70.0/flags/mod.ts";
 import * as yaml from "https://deno.land/std@0.70.0/encoding/yaml.ts";
 import * as path from "https://deno.land/std@0.70.0/path/mod.ts";
-
-import * as golang from './platform_golang.ts';
-
-const args = flags.parse(Deno.args);
-if (args._.length !== 1) {
-  console.log('Specify a driver name to be built');
-  Deno.exit(5);
-}
 
 type DriverMetadata = {
   'platform': string;
@@ -17,7 +8,7 @@ function isDriverMetadata(data: any): data is DriverMetadata {
   return "platform" in data;
 }
 
-type FunctionDef = {
+export type FunctionDef = {
 	'name':          string
 	'input-shape':   string
 	'output-shape':  string
@@ -25,10 +16,10 @@ type FunctionDef = {
 	'source':        string
 }
 function isFunctionDef(data: any): data is FunctionDef {
-  return "context-shape" in data;
+  return "input-shape" in data || "output-shape" in data || "context-shape" in data;
 }
 
-type ShapeDef = {
+export type ShapeDef = {
 	'name':         string
 	'type':         string
 	'props':        Array<PropDef>
@@ -38,7 +29,7 @@ function isShapeDef(data: any): data is ShapeDef {
   return "type" in data && "props" in data && data.props.every(isPropDef);
 }
 
-type PropDef = {
+export type PropDef = {
 	'name':     string
 	'type':     string
 	'optional': boolean | null
@@ -50,15 +41,14 @@ function isPropDef(data: any): data is PropDef {
 }
 
 export class NativeDriver {
-  #name: string
-  #decoder: TextDecoder
+  name: string
+  #decoder: TextDecoder = new TextDecoder("utf-8")
   constructor(name: string) {
-    this.#name = name;
-    this.#decoder = new TextDecoder("utf-8");
+    this.name = name;
   }
 
   async readTextFile(...names: Array<string>): Promise<string> {
-    const filePath = path.join(this.#name, ...names);
+    const filePath = path.join(this.name, ...names);
     const data = await Deno.readFile(filePath);
     return this.#decoder.decode(data);
   }
@@ -70,7 +60,7 @@ export class NativeDriver {
   }
 
   async *readShapes(): AsyncIterable<ShapeDef> {
-    const shapeDir = path.join(this.#name, "shapes");
+    const shapeDir = path.join(this.name, "shapes");
     for await (const dirEntry of Deno.readDir(shapeDir)) {
       const name = path.basename(dirEntry.name, '.yaml');
       if (name === dirEntry.name) continue;
@@ -83,13 +73,14 @@ export class NativeDriver {
     const data = yaml.parse(await this.readTextFile("shapes", `${name}.yaml`));
     if (data && isShapeDef(data)) {
       data.name = name;
+      data["native-props"] = data["native-props"] || [];
       return data;
     }
     return null;
   }
 
   async *readFunctions(sourceExt: string): AsyncIterable<FunctionDef> {
-    const funcDir = path.join(this.#name, "functions");
+    const funcDir = path.join(this.name, "functions");
     for await (const dirEntry of Deno.readDir(funcDir)) {
       const name = path.basename(dirEntry.name, '.yaml');
       if (name === dirEntry.name) continue;
@@ -108,24 +99,3 @@ export class NativeDriver {
     return null;
   }
 }
-
-(async function () {
-
-  const driverName = `${args._[0]}`;
-  console.log('Building driver', driverName, '...');
-  const driver = new NativeDriver(driverName);
-
-  const metadata = await driver.readMetadata();
-  if (!metadata || !metadata.platform) throw new Error(
-    `Driver at ${driverName} is lacking a platform`);
-  switch (metadata.platform) {
-
-    case 'golang':
-      await golang.build(driver);
-      break;
-
-    default:
-      console.log('TODO: unknown driver platform', metadata.platform);
-      return Deno.exit(6);
-  }
-})();
