@@ -17,6 +17,7 @@ if (args._.length !== 1) {
 const options = {
   driverName: `${args._[0]}`.replace(/\/$/, ""),
   target: `${args["output"] || ""}`,
+  pprof:  !!(args["with-pprof"]),
   compile: !(args["only-generate"]),
   cleanup: !(args["keep"]),
 };
@@ -37,6 +38,7 @@ options.target = options.target || options.driverName;
       await golang.build(
         driver,
         options.target,
+        options.pprof,
         options.compile,
         options.cleanup,
       );

@@ -11,6 +11,7 @@ import {
 export async function build(
   source: NativeDriver,
   target: string,
+  pprof: boolean,
   compile: boolean,
   cleanup: boolean,
 ) {
@@ -22,7 +23,7 @@ export async function build(
   const tempDir = await TempDir.createTempDir();
   await tempDir.runGo(["mod", "init", `stardust-driver.local/${source.name}`]);
 
-  await driver.generate(tempDir);
+  await driver.generate(tempDir, pprof);
 
   if (compile) {
     await driver.compile(tempDir, path.resolve(target));
@@ -170,7 +171,7 @@ class GoDriver {
     }
   }
 
-  async generate(tempDir: TempDir) {
+  async generate(tempDir: TempDir, pprofEndpoint: boolean) {
     console.log("Generating code...");
 
     const shapeWriter = new GoWriter(this.deps);
@@ -646,6 +647,7 @@ class GoDriver {
       import "log"
       import "fmt"
       import "net/http"
+      ${pprofEndpoint ? 'import _ "net/http/pprof"' : ''}
 
       func main() {
         root := inmem.NewFolderOf("/",
