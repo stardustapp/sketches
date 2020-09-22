@@ -21,7 +21,6 @@ const options = {
   compile: !(args["only-generate"]),
   cleanup: !(args["keep"]),
 };
-options.target = options.target || options.driverName;
 
 (async function () {
   const driver = new NativeDriver(options.driverName);

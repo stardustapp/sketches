@@ -19,27 +19,44 @@ export async function build(
   const driver = new GoDriver(source);
   await driver.load();
 
+  // support generating into a known path
+  const tempDir = (!compile && target)
+    ? await TempDir.fromPath(path.resolve(target))
+    : await TempDir.createTempDir();
+
   // set up an empty go module
-  const tempDir = await TempDir.createTempDir();
   await tempDir.runGo(["mod", "init", `stardust-driver.local/${source.name}`]);
 
   await driver.generate(tempDir, pprof);
 
   if (compile) {
-    await driver.compile(tempDir, path.resolve(target));
-  }
-  if (cleanup) {
-    await tempDir.delete();
+    await driver.compile(tempDir, path.resolve(target || source.name));
+    if (cleanup) {
+      await tempDir.delete();
+    }
   }
 }
 
 class TempDir {
   path: string;
+  #isOwned: boolean;
   #encoder: TextEncoder = new TextEncoder();
-  constructor(path: string) {
+  constructor(path: string, isOwned = false) {
     this.path = path;
+    this.#isOwned = isOwned;
   }
 
+  static async fromPath(path: string) {
+    const p = Deno.run({
+      cmd: ["mkdir", "-p", "--", path],
+    });
+    const { code } = await p.status();
+    if (code !== 0) {
+      throw new Error(`Failed to ensure target dir: code ${code}`);
+    }
+    console.log("Using directory at", path);
+    return new TempDir(path);
+  }
   static async createTempDir() {
     const p = Deno.run({
       cmd: ["mktemp", "-d"],
@@ -52,7 +69,7 @@ class TempDir {
     const rawOutput = await p.output();
     const path = new TextDecoder("utf-8").decode(rawOutput).trim();
     console.log("Created tempdir at", path);
-    return new TempDir(path);
+    return new TempDir(path, true);
   }
 
   async writeTextFile(names: Array<string>, data: string) {
@@ -71,11 +88,14 @@ class TempDir {
   }
 
   async delete() {
-    const p = Deno.run({
-      cmd: ["rm", "-r", this.path],
-    });
-    const { code } = await p.status();
-    if (code !== 0) throw new Error(`Failed to rm tempdir: code ${code}`);
+    // only clean up folders we randomly made
+    if (this.#isOwned) {
+      const p = Deno.run({
+        cmd: ["rm", "-r", this.path],
+      });
+      const { code } = await p.status();
+      if (code !== 0) throw new Error(`Failed to rm tempdir: code ${code}`);
+    }
   }
 }
 
