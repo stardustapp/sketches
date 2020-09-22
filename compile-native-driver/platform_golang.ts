@@ -467,7 +467,7 @@ class GoDriver {
 
       // first let's write out the impl
       const implWriter = new GoWriter(this.deps);
-      implWriter.write("%s", funct.source);
+      implWriter.write("%s", funct.source.replace(/^package [^\n]+\n+/, ""));
       const implFileName = sprintf("func-%s.go", funct.name);
       await tempDir.writeTextFile([implFileName], implWriter.stringify());
 
@@ -647,7 +647,7 @@ class GoDriver {
       import "log"
       import "fmt"
       import "net/http"
-      ${pprofEndpoint ? 'import _ "net/http/pprof"' : ''}
+      ${pprofEndpoint ? 'import _ "net/http/pprof"' : ""}
 
       func main() {
         root := inmem.NewFolderOf("/",
@@ -674,7 +674,7 @@ class GoDriver {
           log.Println("ListenAndServe:", err)
         }
       }
-    `.replace(/^      /g, ''));
+    `.replace(/^      /g, ""));
     await tempDir.writeTextFile(["main.go"], mainWriter.stringify());
   }
 

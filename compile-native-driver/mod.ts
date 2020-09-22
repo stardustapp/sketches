@@ -17,7 +17,7 @@ if (args._.length !== 1) {
 const options = {
   driverName: `${args._[0]}`.replace(/\/$/, ""),
   target: `${args["output"] || ""}`,
-  pprof:  !!(args["with-pprof"]),
+  pprof: !!(args["with-pprof"]),
   compile: !(args["only-generate"]),
   cleanup: !(args["keep"]),
 };
