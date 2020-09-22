@@ -642,41 +642,37 @@ class GoDriver {
     mainWriter.useDep("skylink");
     mainWriter.useDep("inmem");
     mainWriter.useDep("base");
-    mainWriter.write('import "log"\n');
-    mainWriter.write('import "fmt"\n');
-    mainWriter.write('import "net/http"\n\n');
+    mainWriter.write(`
+      import "log"
+      import "fmt"
+      import "net/http"
 
-    // Create a blank Stardust
-    mainWriter.write("func main() {\n");
-    mainWriter.write('  root := inmem.NewFolderOf("/",\n');
-    mainWriter.write('    inmem.NewFolder("n"),\n');
-    mainWriter.write('    inmem.NewFolder("tmp"),\n');
-    mainWriter.write('    inmem.NewFolderOf("drivers",\n');
-    mainWriter.write("      skylink.GetNsexportDriver(),\n");
-    mainWriter.write("    ),\n");
-    mainWriter.write("  )\n\n");
-    mainWriter.write('  ns := base.NewNamespace("/", root)\n');
-    mainWriter.write("  ctx := base.NewRootContext(ns)\n\n");
+      func main() {
+        root := inmem.NewFolderOf("/",
+          inmem.NewFolder("n"),
+          inmem.NewFolder("tmp"),
+          inmem.NewFolderOf("drivers",
+            skylink.GetNsexportDriver(),
+          ),
+        )
 
-    // Mount "root" shape at /srv
-    mainWriter.write('  ctx.Put("/srv", &Root{})\n\n');
+        ns := base.NewNamespace("/", root)
+        ctx := base.NewRootContext(ns)
 
-    mainWriter.write('  log.Println("Starting nsexport...")\n');
-    mainWriter.write(
-      '  exportFunc, _ := ctx.GetFunction("/drivers/nsexport/invoke")\n',
-    );
-    mainWriter.write('  exportBase, _ := ctx.Get("/srv")\n');
-    mainWriter.write("  exportFunc.Invoke(ctx, exportBase)\n\n");
+        ctx.Put("/srv", &Root{})
 
-    mainWriter.write('  host := fmt.Sprint("0.0.0.0:", 9234)\n');
-    mainWriter.write('  log.Printf("Listening on %%s...", host)\n');
-    mainWriter.write(
-      "  if err := http.ListenAndServe(host, nil); err != nil {\n",
-    );
-    mainWriter.write('    log.Println("ListenAndServe:", err)\n');
-    mainWriter.write("  }\n");
+        log.Println("Starting nsexport...")
+        exportFunc, _ := ctx.GetFunction("/drivers/nsexport/invoke")
+        exportBase, _ := ctx.Get("/srv")
+        exportFunc.Invoke(ctx, exportBase)
 
-    mainWriter.write("}\n");
+        host := fmt.Sprint("0.0.0.0:", 9234)
+        log.Printf("Listening on %%s...", host)
+        if err := http.ListenAndServe(host, nil); err != nil {
+          log.Println("ListenAndServe:", err)
+        }
+      }
+    `.replace(/^      /g, ''));
     await tempDir.writeTextFile(["main.go"], mainWriter.stringify());
   }
 
