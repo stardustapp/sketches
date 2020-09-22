@@ -645,7 +645,7 @@ class GoDriver {
     mainWriter.useDep("base");
     mainWriter.write(`
       import "log"
-      import "fmt"
+      import "os"
       import "net/http"
       ${pprofEndpoint ? 'import _ "net/http/pprof"' : ""}
 
@@ -668,7 +668,10 @@ class GoDriver {
         exportBase, _ := ctx.Get("/srv")
         exportFunc.Invoke(ctx, exportBase)
 
-        host := fmt.Sprint("0.0.0.0:", 9234)
+        host := os.Getenv("STARDRIVER_LISTEN_ADDRESS")
+        if host == "" {
+          host = "0.0.0.0:9234"
+        }
         log.Printf("Listening on %%s...", host)
         if err := http.ListenAndServe(host, nil); err != nil {
           log.Println("ListenAndServe:", err)
