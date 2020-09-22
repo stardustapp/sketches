@@ -3,14 +3,27 @@ import * as flags from "https://deno.land/std@0.70.0/flags/mod.ts";
 import { NativeDriver } from "./driver.ts";
 import * as golang from "./platform_golang.ts";
 
-const args = flags.parse(Deno.args);
+const args = flags.parse(Deno.args, {
+  alias: {
+    "o": "output",
+  },
+});
+
 if (args._.length !== 1) {
   console.log("Specify a driver name to be built");
   Deno.exit(5);
 }
 
+const options = {
+  driverName: `${args._[0]}`.replace(/\/$/, ""),
+  target: `${args["output"] || ""}`,
+  compile: !(args["only-generate"]),
+  cleanup: !(args["keep"]),
+};
+options.target = options.target || options.driverName;
+
 (async function () {
-  const driver = new NativeDriver(`${args._[0]}`);
+  const driver = new NativeDriver(options.driverName);
   console.log("Building driver", driver.name, "...");
 
   const metadata = await driver.readMetadata();
@@ -21,7 +34,12 @@ if (args._.length !== 1) {
   }
   switch (metadata.platform) {
     case "golang":
-      await golang.build(driver);
+      await golang.build(
+        driver,
+        options.target,
+        options.compile,
+        options.cleanup,
+      );
       break;
 
     default:

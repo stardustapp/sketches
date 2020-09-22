@@ -2,9 +2,18 @@ import { sprintf } from "https://deno.land/std@0.70.0/fmt/printf.ts";
 import * as path from "https://deno.land/std@0.70.0/path/mod.ts";
 
 import type { NativeDriver, ShapeDef, FunctionDef } from "./driver.ts";
-import { snakeToCamel, snakeToCamelLower } from "./snaker.ts";
+import {
+  snakeToCamel,
+  snakeToCamelLower,
+  commonInitialisms,
+} from "./snaker.ts";
 
-export async function build(source: NativeDriver) {
+export async function build(
+  source: NativeDriver,
+  target: string,
+  compile: boolean,
+  cleanup: boolean,
+) {
   // load all the driver resources
   const driver = new GoDriver(source);
   await driver.load();
@@ -14,7 +23,13 @@ export async function build(source: NativeDriver) {
   await tempDir.runGo(["mod", "init", `stardust-driver.local/${source.name}`]);
 
   await driver.generate(tempDir);
-  await driver.compile(tempDir);
+
+  if (compile) {
+    await driver.compile(tempDir, path.resolve(target));
+  }
+  if (cleanup) {
+    await tempDir.delete();
+  }
 }
 
 class TempDir {
@@ -53,6 +68,14 @@ class TempDir {
     const { code } = await p.status();
     if (code !== 0) throw new Error(`Failed to run go: code ${code}`);
   }
+
+  async delete() {
+    const p = Deno.run({
+      cmd: ["rm", "-r", this.path],
+    });
+    const { code } = await p.status();
+    if (code !== 0) throw new Error(`Failed to rm tempdir: code ${code}`);
+  }
 }
 
 class GoWriter {
@@ -77,6 +100,10 @@ class GoWriter {
 
   write(format: string, ...args: unknown[]) {
     this.parts.push(sprintf(format, ...args));
+  }
+  writeSeparator(format: string, ...args: unknown[]) {
+    this.write("//////////////////////////////////\n// ");
+    this.write(format + "\n\n", ...args);
   }
 
   stringify(): string {
@@ -149,9 +176,7 @@ class GoDriver {
     const shapeWriter = new GoWriter(this.deps);
 
     // first write a folder with all the shapes listed
-    shapeWriter.write(
-      "//////////////////////////////////\n// Shape collection\n\n",
-    );
+    shapeWriter.writeSeparator("Shape collection");
     shapeWriter.write(
       'var AllShapes *inmem.Folder = inmem.NewFolderOf("shapes",\n',
     );
@@ -162,10 +187,7 @@ class GoDriver {
 
     // now write out the shapes themselves
     for (const shape of this.shapeNames.values()) {
-      shapeWriter.write(
-        "//////////////////////////////////\n// Shape: %s\n\n",
-        shape.name,
-      );
+      shapeWriter.writeSeparator("Shape: %s\n\n", shape.name);
 
       shapeWriter.useDep("inmem");
       shapeWriter.write(
@@ -260,10 +282,7 @@ class GoDriver {
         continue;
       }
 
-      folderWriter.write(
-        "//////////////////////////////////\n// Folder for shape: %s\n\n",
-        shape.name,
-      );
+      folderWriter.writeSeparator("Folder for shape: %s\n\n", shape.name);
       const properName = snakeToCamel(shape.name);
 
       // Write out the basic struct w/ fields
@@ -443,10 +462,7 @@ class GoDriver {
 
     const funcWriter = new GoWriter(this.deps);
     for (const funct of this.funcNames.values()) {
-      funcWriter.write(
-        "//////////////////////////////////\n// Function: %s\n\n",
-        funct.name,
-      );
+      funcWriter.writeSeparator("Function: %s\n\n", funct.name);
 
       // first let's write out the impl
       const implWriter = new GoWriter(this.deps);
@@ -664,11 +680,11 @@ class GoDriver {
     await tempDir.writeTextFile(["main.go"], mainWriter.stringify());
   }
 
-  async compile(tempDir: TempDir) {
+  async compile(tempDir: TempDir, targetPath: string) {
     console.log("Fetching deps...");
     await tempDir.runGo(["get", "-d"]);
 
     console.log("Compiling...");
-    await tempDir.runGo(["build", "-o", this.source.name]);
+    await tempDir.runGo(["build", "-o", targetPath]);
   }
 }

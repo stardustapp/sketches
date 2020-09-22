@@ -27,7 +27,8 @@ export type ShapeDef = {
   "native-props": Array<PropDef>;
 };
 function isShapeDef(data: any): data is ShapeDef {
-  return "type" in data && "props" in data && data.props.every(isPropDef);
+  return "type" in data && ("props" in data && data.props.every(isPropDef)) ||
+    ("native-props" in data && data["native-props"].every(isPropDef));
 }
 
 export type PropDef = {
@@ -74,6 +75,7 @@ export class NativeDriver {
     const data = yaml.parse(await this.readTextFile("shapes", `${name}.yaml`));
     if (data && isShapeDef(data)) {
       data.name = name;
+      data["props"] = data["props"] || [];
       data["native-props"] = data["native-props"] || [];
       return data;
     }
