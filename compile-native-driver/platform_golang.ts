@@ -24,8 +24,9 @@ export async function build(
     ? await TempDir.fromPath(path.resolve(target))
     : await TempDir.createTempDir();
 
-  // set up an empty go module
-  await tempDir.runGo(["mod", "init", `stardust-driver.local/${source.name}`]);
+  // set up an empty go module (manually to not need go installed)
+  const mod = `stardust-driver.local/${source.name}`;
+  await tempDir.writeTextFile(["go.mod"], `module ${mod}\n\ngo 1.14\n`);
 
   await driver.generate(tempDir, pprof);
 
